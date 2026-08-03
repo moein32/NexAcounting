@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
@@ -7,7 +7,24 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { useAppStore } from '../../../stores/appStore';
 import { useUIStore } from '../../../stores/uiStore';
-import { Settings, Building2, User, Moon, Sun, Monitor, Smartphone, Save, ShieldCheck } from 'lucide-react';
+import {
+  Settings,
+  Building2,
+  User,
+  Moon,
+  Sun,
+  Monitor,
+  Smartphone,
+  Save,
+  ShieldCheck,
+  Download,
+  Upload,
+  Database,
+  Lock,
+  RefreshCw,
+  AlertCircle,
+} from 'lucide-react';
+import { BackupRepository } from '../../../repositories';
 
 export function SettingsPage() {
   const { currentBusiness, currentUser, setCurrentBusiness, updateCurrentUser } = useAppStore();
@@ -18,11 +35,84 @@ export function SettingsPage() {
   const [userName, setUserName] = useState(currentUser.name);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Backup States
+  const [backupPassword, setBackupPassword] = useState('nexaccounting-secure-pass');
+  const [restorePassword, setRestorePassword] = useState('nexaccounting-secure-pass');
+  const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleSave = () => {
     setCurrentBusiness({ ...currentBusiness, name: bizName, taxId: bizTaxId });
     updateCurrentUser({ name: userName });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  // Securely export and download local SQLite database as an AES-encrypted .nxb file
+  const handleExportBackup = () => {
+    setBackupStatus(null);
+    try {
+      const encryptedData = BackupRepository.exportBackup();
+      
+      const blob = new Blob([encryptedData], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+      
+      link.href = url;
+      link.download = `nexaccounting_backup_${dateStr}.nxb`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setBackupStatus({
+        type: 'success',
+        message: 'نسخه پشتیبان با موفقیت ایجاد و فایل رمزگذاری شده (.nxb) دانلود شد.',
+      });
+    } catch (e: any) {
+      setBackupStatus({
+        type: 'error',
+        message: e.message || 'خطا در ایجاد فایل پشتیبان.',
+      });
+    }
+  };
+
+  // Upload and decrypt a .nxb file, verifying checksum, and restoring local SQLite database
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBackupStatus(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const fileContent = event.target?.result as string;
+        if (!fileContent) throw new Error('فایل پشتیبان خالی است.');
+
+        const success = BackupRepository.importBackup(fileContent);
+        if (success) {
+          setBackupStatus({
+            type: 'success',
+            message: 'دیتابیس با موفقیت بازیابی شد. لطفاً چند لحظه صبر کنید تا برنامه مجدداً بارگذاری شود...',
+          });
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          setBackupStatus({
+            type: 'error',
+            message: 'کلمه عبور اشتباه است یا ساختار فایل پشتیبان معتبر نیست.',
+          });
+        }
+      } catch (err: any) {
+        setBackupStatus({
+          type: 'error',
+          message: err.message || 'خطا در خواندن فایل پشتیبان.',
+        });
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -42,6 +132,19 @@ export function SettingsPage() {
         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4" />
           <span>تنظیمات با موفقیت ذخیره شد.</span>
+        </div>
+      )}
+
+      {backupStatus && (
+        <div
+          className={`p-3 border rounded-xl text-xs font-bold flex items-center gap-2 ${
+            backupStatus.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+          }`}
+        >
+          {backupStatus.type === 'success' ? <ShieldCheck className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span>{backupStatus.message}</span>
         </div>
       )}
 
@@ -141,7 +244,7 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-emerald-600" />
+              <Smartphone className="w-5 h-5 text-blue-600" />
               <span>وضعیت برنامه PWA و آماده‌سازی موبایل</span>
             </CardTitle>
             <CardDescription>معماری توسعه چندپلتفرمی (Web / Capacitor / Android / iOS)</CardDescription>
@@ -149,7 +252,7 @@ export function SettingsPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs">
               <span>برنامه وب پیشرونده (PWA)</span>
-              <Badge variant="success">فعال (Manifest / Standalone)</Badge>
+              <Badge variant="primary">فعال (Manifest / Standalone)</Badge>
             </div>
             <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs">
               <span>آماده‌سازی Capacitor برای Android / iOS</span>
@@ -158,6 +261,81 @@ export function SettingsPage() {
             <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
               تمام لایه منطق مالی، Zustand stores، و مسیرها بر اساس استانداردهای مستقل از پلتفرم پیاده‌سازی شده‌اند.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* SQLite Database Backups (.nxb format) */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-blue-600" />
+              <span>پشتیبان‌گیری و بازیابی دیتابیس مالی آفلاین</span>
+            </CardTitle>
+            <CardDescription>تهیه خروجی رمزنگاری شده و فوق‌العاده امن از کلیه فاکتورها، تراکنش‌ها، مشتریان و کالاها</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Export Area */}
+            <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Download className="w-4 h-4 text-blue-600" />
+                <span>تهیه نسخه پشتیبان (خروجی دیتابیس)</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                کل ساختار و داده‌های حسابداری شما با الگوریتم رمزنگاری پیشرفته به صورت یک فایل با پسوند <code className="font-bold">.nxb</code> صادر می‌شود که می‌توانید آن را روی سیستم خود یا گوگل درایو ذخیره کنید.
+              </p>
+              <Input
+                label="کلمه عبور رمزنگاری (جهت امنیت فایل)"
+                type="password"
+                value={backupPassword}
+                onChange={(e) => setBackupPassword(e.target.value)}
+                icon={<Lock className="w-4 h-4 text-slate-400" />}
+              />
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={handleExportBackup}
+                icon={<Download className="w-4 h-4" />}
+                className="w-full bg-blue-600 hover:bg-blue-700 border-none text-white shadow-sm"
+              >
+                ایجاد و دانلود فایل پشتیبان (.nxb)
+              </Button>
+            </div>
+
+            {/* Import Area */}
+            <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-indigo-600" />
+                <span>بازیابی اطلاعات از فایل پشتیبان</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                با انتخاب یک فایل پشتیبان با پسوند <code className="font-bold">.nxb</code> و وارد کردن کلمه عبور صحیح آن، کلیه اطلاعات مالی جاری جایگزین شده و بازنویسی خواهند شد.
+              </p>
+              <Input
+                label="کلمه عبور رمزگشایی فایل پشتیبان"
+                type="password"
+                value={restorePassword}
+                onChange={(e) => setRestorePassword(e.target.value)}
+                icon={<Lock className="w-4 h-4 text-slate-400" />}
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportBackup}
+                accept=".nxb"
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => fileInputRef.current?.click()}
+                icon={<Upload className="w-4 h-4 text-indigo-600" />}
+                className="w-full border-dashed border-slate-300 dark:border-slate-700"
+              >
+                انتخاب فایل و بازیابی اطلاعات
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

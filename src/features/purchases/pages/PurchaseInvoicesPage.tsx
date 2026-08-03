@@ -1,90 +1,191 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/authStore';
+import { documentService } from '../../../services/documentService';
+import { Document } from '../../../types/document';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { DataTable, Column } from '../../../components/ui/DataTable';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { formatCurrency, formatPersianDate } from '../../../lib/utils';
-import { ShoppingBag, Plus, Download } from 'lucide-react';
-
-interface PurchaseMock {
-  id: string;
-  code: string;
-  supplierName: string;
-  amount: number;
-  date: string;
-  status: 'paid' | 'pending';
-}
-
-const mockPurchases: PurchaseMock[] = [
-  {
-    id: '1',
-    code: 'PUR-1403-0512',
-    supplierName: 'صنایع فولاد متین',
-    amount: 210000000,
-    date: '2026-07-21T16:45:00Z',
-    status: 'paid',
-  },
-  {
-    id: '2',
-    code: 'PUR-1403-0511',
-    supplierName: 'تولیدی چسب پارس',
-    amount: 45000000,
-    date: '2026-07-18T10:15:00Z',
-    status: 'pending',
-  },
-];
+import {
+  ShoppingBag,
+  FilePlus,
+  Layers,
+  CreditCard,
+  Clock,
+} from 'lucide-react';
 
 export function PurchaseInvoicesPage() {
-  const columns: Column<PurchaseMock>[] = [
-    { key: 'code', header: 'شماره فاکتور خرید' },
-    { key: 'supplierName', header: 'تأمین‌کننده / فروشنده' },
+  const navigate = useNavigate();
+  const { currentBusiness } = useAuthStore();
+  const [invoices, setInvoices] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalAmount: 0,
+    paidAmount: 0,
+    unpaidAmount: 0,
+    draftCount: 0,
+  });
+
+  useEffect(() => {
+    if (currentBusiness) {
+      loadInvoices();
+    }
+  }, [currentBusiness]);
+
+  const loadInvoices = async () => {
+    try {
+      setLoading(true);
+      const list = await documentService.getDocuments(currentBusiness!.id, {
+        document_type: 'purchase_invoice',
+      });
+      setInvoices(list);
+
+      let total = 0;
+      let paid = 0;
+      let unpaid = 0;
+      let drafts = 0;
+
+      list.forEach((inv) => {
+        if (inv.status === 'confirmed') {
+          total += inv.grand_total;
+          if (inv.payment_status === 'paid') {
+            paid += inv.grand_total;
+          } else if (inv.payment_status === 'partially_paid') {
+            paid += inv.grand_total * 0.4; // estimate for mock
+            unpaid += inv.grand_total * 0.6;
+          } else {
+            unpaid += inv.grand_total;
+          }
+        } else if (inv.status === 'draft') {
+          drafts += 1;
+        }
+      });
+
+      setStats({
+        totalAmount: total,
+        paidAmount: paid,
+        unpaidAmount: unpaid,
+        draftCount: drafts,
+      });
+    } catch (err) {
+      console.error('Failed to load purchase invoices:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const columns: Column<Document>[] = [
+    { key: 'document_number', header: 'شماره فاکتور خرید' },
+    { key: 'party_display_name', header: 'تأمین‌کننده / فروشنده' },
     {
-      key: 'amount',
-      header: 'مبلغ کل',
-      render: (row) => <span className="font-bold">{formatCurrency(row.amount, 'تومان')}</span>,
+      key: 'grand_total',
+      header: 'مبلغ کل خرید',
+      render: (row) => <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(row.grand_total, 'تومان')}</span>,
     },
     {
-      key: 'date',
-      header: 'تاریخ ثبت',
-      render: (row) => formatPersianDate(row.date),
+      key: 'document_date',
+      header: 'تاریخ ثبت خرید',
+      render: (row) => formatPersianDate(row.document_date),
     },
     {
       key: 'status',
-      header: 'وضعیت پرداخت',
-      render: (row) =>
-        row.status === 'paid' ? <Badge variant="success">تسویه‌شده</Badge> : <Badge variant="warning">بدهکار</Badge>,
+      header: 'وضعیت سند',
+      render: (row) => {
+        const info = documentService.getDocStatusColor(row.status);
+        return <Badge variant={info.bg as any} className={info.text}>{info.label}</Badge>;
+      },
+    },
+    {
+      key: 'payment_status',
+      header: 'وضعیت تسویه مالی',
+      render: (row) => {
+        const info = documentService.getPaymentStatusColor(row.payment_status);
+        return <Badge variant={info.bg as any} className={info.text}>{info.label}</Badge>;
+      },
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="فاکتورهای خرید"
-        description="ثبت و پیگیری خرید کالاها و هزینه‌های خرید از تأمین‌کنندگان"
-        icon={<ShoppingBag className="w-6 h-6" />}
+        title="فاکتورهای خرید کالا"
+        description="ثبت و پیگیری خرید کالاها و بهای تمام‌شده تدارکاتی از تأمین‌کنندگان"
+        icon={<ShoppingBag className="w-6 h-6 text-indigo-600" />}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
-              خروجی اکسل
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Plus className="w-4 h-4" />}
-              onClick={() => alert('ثبت فاکتور خرید جدید')}
-            >
-              ثبت فاکتور خرید
-            </Button>
+            <Link to="/purchases/new?type=purchase_invoice">
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<FilePlus className="w-4 h-4" />}
+              >
+                ثبت فاکتور خرید جدید
+              </Button>
+            </Link>
           </div>
         }
       />
 
-      <DataTable
-        columns={columns}
-        data={mockPurchases}
-        searchKey="supplierName"
-        searchPlaceholder="جستجو بر اساس نام تأمین‌کننده یا شماره فاکتور..."
-      />
+      {/* Stats Board */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-xs text-slate-400 font-semibold">کل خرید تاییدشده</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-200 mt-1">{formatCurrency(stats.totalAmount)} تومان</p>
+          </div>
+          <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600">
+            <Layers className="w-5 h-5" />
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-xs text-slate-400 font-semibold">مبالغ پرداخت‌شده</p>
+            <p className="text-lg font-black text-emerald-600 mt-1">{formatCurrency(stats.paidAmount)} تومان</p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
+            <CreditCard className="w-5 h-5" />
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-xs text-slate-400 font-semibold">تعهدات پرداخت‌نشده</p>
+            <p className="text-lg font-black text-rose-600 mt-1">{formatCurrency(stats.unpaidAmount)} تومان</p>
+          </div>
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-600">
+            <CreditCard className="w-5 h-5" />
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-xs text-slate-400 font-semibold">پیش‌نویس‌ها</p>
+            <p className="text-lg font-black text-amber-600 mt-1">{stats.draftCount} سند</p>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-amber-600">
+            <Clock className="w-5 h-5" />
+          </div>
+        </Card>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center min-h-[200px] gap-2">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs text-slate-500">در حال دریافت فاکتورهای خرید...</p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={invoices}
+          searchKey="party_display_name"
+          searchPlaceholder="جستجو بر اساس نام تأمین‌کننده یا شماره فاکتور خرید..."
+          onRowClick={(row) => navigate(`/purchases/${row.id}`)}
+        />
+      )}
     </div>
   );
 }

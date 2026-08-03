@@ -19,11 +19,17 @@ import { SalesOverviewPage } from '../../features/sales/pages/SalesOverviewPage'
 import { SalesInvoicesPage } from '../../features/sales/pages/SalesInvoicesPage';
 import { SalesQuotationsPage } from '../../features/sales/pages/SalesQuotationsPage';
 import { SalesReturnsPage } from '../../features/sales/pages/SalesReturnsPage';
+import { SalesOrdersPage } from '../../features/sales/pages/SalesOrdersPage';
+import { SalesCreatePage } from '../../features/sales/pages/SalesCreatePage';
+import { SalesDetailPage } from '../../features/sales/pages/SalesDetailPage';
 
 // Purchases
 import { PurchasesOverviewPage } from '../../features/purchases/pages/PurchasesOverviewPage';
 import { PurchaseInvoicesPage } from '../../features/purchases/pages/PurchaseInvoicesPage';
 import { PurchaseReturnsPage } from '../../features/purchases/pages/PurchaseReturnsPage';
+import { PurchaseOrdersPage } from '../../features/purchases/pages/PurchaseOrdersPage';
+import { PurchaseCreatePage } from '../../features/purchases/pages/PurchaseCreatePage';
+import { PurchaseDetailPage } from '../../features/purchases/pages/PurchaseDetailPage';
 
 // Parties
 import { PartiesListPage } from '../../features/parties/pages/PartiesListPage';
@@ -47,6 +53,10 @@ import { PriceListsPage } from '../../features/catalog/pages/PriceListsPage';
 // Legacy Products & Inventory
 import { ProductsPage } from '../../features/products/pages/ProductsPage';
 import { InventoryPage } from '../../features/inventory/pages/InventoryPage';
+import { WarehousesPage } from '../../features/inventory/pages/WarehousesPage';
+import { TransactionsPage } from '../../features/inventory/pages/TransactionsPage';
+import { LowStockPage } from '../../features/inventory/pages/LowStockPage';
+import { StockCountPage } from '../../features/inventory/pages/StockCountPage';
 
 // Treasury
 import { TreasuryOverviewPage } from '../../features/treasury/pages/TreasuryOverviewPage';
@@ -103,12 +113,18 @@ export function AppRouter() {
         <Route path="/sales" element={<SalesOverviewPage />} />
         <Route path="/sales/invoices" element={<SalesInvoicesPage />} />
         <Route path="/sales/quotations" element={<SalesQuotationsPage />} />
+        <Route path="/sales/orders" element={<SalesOrdersPage />} />
         <Route path="/sales/returns" element={<SalesReturnsPage />} />
+        <Route path="/sales/new" element={<SalesCreatePage />} />
+        <Route path="/sales/:id" element={<SalesDetailPage />} />
 
         {/* Purchases */}
         <Route path="/purchases" element={<PurchasesOverviewPage />} />
         <Route path="/purchases/invoices" element={<PurchaseInvoicesPage />} />
+        <Route path="/purchases/orders" element={<PurchaseOrdersPage />} />
         <Route path="/purchases/returns" element={<PurchaseReturnsPage />} />
+        <Route path="/purchases/new" element={<PurchaseCreatePage />} />
+        <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
 
         {/* Parties */}
         <Route path="/parties" element={<PartiesListPage />} />
@@ -132,6 +148,10 @@ export function AppRouter() {
         {/* Legacy Products & Inventory */}
         <Route path="/products" element={<Navigate to="/items" replace />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+        <Route path="/inventory/transactions" element={<TransactionsPage />} />
+        <Route path="/inventory/low-stock" element={<LowStockPage />} />
+        <Route path="/inventory/stock-count" element={<StockCountPage />} />
 
         {/* Treasury */}
         <Route path="/treasury" element={<TreasuryOverviewPage />} />

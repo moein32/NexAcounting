@@ -6,12 +6,7 @@ const supabaseUrl = env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
 export const isSupabaseConfigured = () => {
-  return (
-    !!env.VITE_SUPABASE_URL &&
-    env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co' &&
-    !!env.VITE_SUPABASE_ANON_KEY &&
-    env.VITE_SUPABASE_ANON_KEY !== 'placeholder-anon-key'
-  );
+  return false; // Force offline-first local mode for all accounting features
 };
 
 // Singleton Supabase Client instance

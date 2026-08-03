@@ -823,7 +823,7 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
             isLoading={isSubmitting}
             onClick={() => handleFormSubmit(false)}
             icon={<CheckCircle2 className="w-4 h-4" />}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6"
+            className="px-6"
           >
             {isEditMode ? 'ثبت تغییرات طرف حساب' : 'ایجاد و ثبت نهایی طرف حساب'}
           </Button>

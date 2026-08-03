@@ -182,44 +182,55 @@ const INITIAL_DEMO_PARTIES: Party[] = [
   },
 ];
 
+import { PartyRepository } from '../repositories';
+
 // Helper to manage demo storage
 function getDemoPartiesFromStorage(businessId: string): Party[] {
   try {
-    const raw = localStorage.getItem(DEMO_PARTIES_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(
-        DEMO_PARTIES_STORAGE_KEY,
-        JSON.stringify(INITIAL_DEMO_PARTIES)
-      );
-      return INITIAL_DEMO_PARTIES.filter((p) => p.business_id === businessId);
+    const list = PartyRepository.getAll(businessId) as any[];
+    if (list.length === 0 && (businessId === 'demo_biz_1' || businessId === 'biz_main')) {
+      INITIAL_DEMO_PARTIES.forEach((p) => {
+        PartyRepository.create({
+          ...p,
+          business_id: businessId,
+          name: p.display_name,
+          code: p.national_id || 'PARTY-1000',
+        } as any);
+      });
+      return PartyRepository.getAll(businessId) as any[];
     }
-    const parsed: Party[] = JSON.parse(raw);
-    const filtered = parsed.filter((p) => p.business_id === businessId);
-    if (filtered.length === 0 && businessId === 'demo_biz_1') {
-      return INITIAL_DEMO_PARTIES;
-    }
-    return filtered;
+    return list.map(p => ({
+      ...p,
+      display_name: p.name,
+      party_type: 'individual',
+      is_active: p.is_active !== false,
+      roles: p.roles || ['customer'],
+    })) as any[];
   } catch {
-    return INITIAL_DEMO_PARTIES.filter((p) => p.business_id === businessId);
+    return PartyRepository.getAll(businessId) as any[];
   }
 }
 
 function saveDemoPartiesToStorage(parties: Party[]) {
   try {
-    const raw = localStorage.getItem(DEMO_PARTIES_STORAGE_KEY);
-    let allParties: Party[] = raw ? JSON.parse(raw) : INITIAL_DEMO_PARTIES;
-    
     parties.forEach((updated) => {
-      const idx = allParties.findIndex((p) => p.id === updated.id);
-      if (idx >= 0) {
-        allParties[idx] = updated;
+      const existing = PartyRepository.getById(updated.id);
+      if (existing) {
+        PartyRepository.update(updated.id, {
+          ...updated,
+          name: updated.display_name || (updated as any).name,
+          code: updated.national_id || 'PARTY-1000',
+        } as any);
       } else {
-        allParties.unshift(updated);
+        PartyRepository.create({
+          ...updated,
+          name: updated.display_name || (updated as any).name,
+          code: updated.national_id || 'PARTY-1000',
+        } as any);
       }
     });
-    localStorage.setItem(DEMO_PARTIES_STORAGE_KEY, JSON.stringify(allParties));
   } catch (e) {
-    console.error('Error saving demo parties to storage:', e);
+    console.error('Error saving parties to SQLite:', e);
   }
 }
 

@@ -247,40 +247,55 @@ const INITIAL_DEMO_ITEMS: Item[] = [
   },
 ];
 
+import { ItemRepository } from '../repositories';
+
 function getDemoItemsFromStorage(businessId: string): Item[] {
   try {
-    const raw = localStorage.getItem(DEMO_ITEMS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(DEMO_ITEMS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_ITEMS));
-      return INITIAL_DEMO_ITEMS.filter((i) => i.business_id === businessId);
+    const list = ItemRepository.getAll(businessId) as any[];
+    if (list.length === 0 && (businessId === 'demo_biz_1' || businessId === 'biz_main')) {
+      INITIAL_DEMO_ITEMS.forEach((i) => {
+        ItemRepository.create({
+          ...i,
+          business_id: businessId,
+          type: i.item_type as 'product' | 'service',
+          sale_price: i.default_sale_price || 0,
+        } as any);
+      });
+      return ItemRepository.getAll(businessId) as any[];
     }
-    const parsed: Item[] = JSON.parse(raw);
-    const filtered = parsed.filter((i) => i.business_id === businessId);
-    if (filtered.length === 0 && businessId === 'demo_biz_1') {
-      return INITIAL_DEMO_ITEMS;
-    }
-    return filtered;
+    return list.map(item => ({
+      ...item,
+      item_type: item.type || 'product',
+      default_sale_price: item.sale_price || 0,
+      tax_rate: 10,
+      default_discount_percent: 0,
+      track_inventory: true,
+    })) as any[];
   } catch {
-    return INITIAL_DEMO_ITEMS.filter((i) => i.business_id === businessId);
+    return ItemRepository.getAll(businessId) as any[];
   }
 }
 
 function saveDemoItemsToStorage(items: Item[]) {
   try {
-    const raw = localStorage.getItem(DEMO_ITEMS_STORAGE_KEY);
-    let all: Item[] = raw ? JSON.parse(raw) : INITIAL_DEMO_ITEMS;
-
     items.forEach((updated) => {
-      const idx = all.findIndex((i) => i.id === updated.id);
-      if (idx >= 0) {
-        all[idx] = updated;
+      const existing = ItemRepository.getById(updated.id);
+      if (existing) {
+        ItemRepository.update(updated.id, {
+          ...updated,
+          type: updated.item_type as 'product' | 'service',
+          sale_price: updated.default_sale_price || 0,
+        } as any);
       } else {
-        all.unshift(updated);
+        ItemRepository.create({
+          ...updated,
+          type: updated.item_type as 'product' | 'service',
+          sale_price: updated.default_sale_price || 0,
+        } as any);
       }
     });
-    localStorage.setItem(DEMO_ITEMS_STORAGE_KEY, JSON.stringify(all));
   } catch (e) {
-    console.error('Error saving demo items:', e);
+    console.error('Error saving items to SQLite:', e);
   }
 }
 

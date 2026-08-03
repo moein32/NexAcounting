@@ -3,6 +3,7 @@ export * from './auth';
 export * from './party';
 export * from './catalog';
 export * from './inventory';
+export * from './document';
 
 export interface UserProfile {
   id: string;

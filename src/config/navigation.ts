@@ -54,6 +54,13 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
     title: 'انبارداری',
     path: '/inventory',
     iconName: 'Warehouse',
+    children: [
+      { title: 'داشبورد انبار', path: '/inventory' },
+      { title: 'مدیریت انبارها', path: '/inventory/warehouses' },
+      { title: 'گردش کالا (کاردکس)', path: '/inventory/transactions' },
+      { title: 'کمبود موجودی', path: '/inventory/low-stock' },
+      { title: 'انبارگردانی', path: '/inventory/stock-count' },
+    ],
   },
   {
     title: 'خزانه و صندوق',
