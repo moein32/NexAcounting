@@ -5,7 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { formatCurrency } from '../../../lib/utils';
 import { TrendingUp } from 'lucide-react';
 
-export function SalesChart() {
+interface SalesChartProps {
+  data?: {
+    month: string;
+    revenue: number;
+    expense: number;
+    profit: number;
+  }[];
+}
+
+export function SalesChart({ data }: SalesChartProps) {
+  const chartData = data && data.length > 0 
+    ? data.map(d => ({
+        name: d.month,
+        sales: d.revenue,
+        purchases: d.expense,
+        profit: d.profit
+      }))
+    : MOCK_SALES_CHART_DATA;
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -19,6 +37,12 @@ export function SalesChart() {
             <span>خرید:</span>
             <span className="font-bold">{formatCurrency(payload[1].value, 'تومان')}</span>
           </div>
+          {payload[2] && (
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 border-t border-slate-100 dark:border-slate-800 pt-1.5 mt-1.5">
+              <span>سود ناخالص:</span>
+              <span className="font-bold">{formatCurrency(payload[2].value, 'تومان')}</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -39,7 +63,7 @@ export function SalesChart() {
       <CardContent className="pt-4">
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={MOCK_SALES_CHART_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
@@ -55,12 +79,13 @@ export function SalesChart() {
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => `${(v / 1000000000).toFixed(1)}B`}
+                tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
                 tick={{ fontSize: 11, fill: '#64748b' }}
               />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="sales" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#salesGrad)" />
               <Area type="monotone" dataKey="purchases" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#purchasesGrad)" />
+              <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={1.5} fill="none" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

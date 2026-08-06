@@ -21,6 +21,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { PrintInvoiceModal } from '../../../components/invoice/PrintInvoiceModal';
+
 export function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export function PurchaseDetailPage() {
   const [events, setEvents] = useState<DocumentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   useEffect(() => {
     if (currentBusiness && id) {
@@ -97,11 +99,7 @@ export function PurchaseDetailPage() {
   };
 
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 300);
+    setShowPrintModal(true);
   };
 
   if (loading && !doc) {
@@ -242,7 +240,7 @@ export function PurchaseDetailPage() {
                     <tr key={item.id || index} className="text-slate-800 dark:text-slate-200">
                       <td className="py-3 px-1 text-center font-bold">{index + 1}</td>
                       <td className="py-3 px-2">
-                        <p className="font-bold">{item.item_name}</p>
+                        <p className="font-bold">{item.item_name || (item as any).productName || item.description || 'کالای نامشخص'}</p>
                         {item.description && <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>}
                       </td>
                       <td className="py-3 px-2 text-center font-bold">
@@ -361,6 +359,15 @@ export function PurchaseDetailPage() {
           </Card>
         </div>
       </div>
+
+      {doc && (
+        <PrintInvoiceModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          document={doc}
+          business={currentBusiness}
+        />
+      )}
     </div>
   );
 }

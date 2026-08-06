@@ -5,7 +5,20 @@ import { Badge } from '../../../components/ui/Badge';
 import { formatCurrency, formatPersianDate } from '../../../lib/utils';
 import { History, ArrowUpRight, ArrowDownLeft, Receipt, CreditCard } from 'lucide-react';
 
-export function RecentTransactions() {
+interface RecentTransactionsProps {
+  transactions?: {
+    id: string;
+    code: string;
+    title: string;
+    partyName: string;
+    amount: number;
+    type: 'sale' | 'receipt' | 'purchase' | 'payment';
+    date: string;
+    status: string;
+  }[];
+}
+
+export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   const typeIcons = {
     sale: <ArrowUpRight className="w-4 h-4 text-emerald-600" />,
     receipt: <Receipt className="w-4 h-4 text-blue-600" />,
@@ -20,6 +33,8 @@ export function RecentTransactions() {
     payment: <Badge variant="danger">پرداخت</Badge>,
   };
 
+  const list = transactions && transactions.length > 0 ? transactions : MOCK_RECENT_TRANSACTIONS;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -33,7 +48,7 @@ export function RecentTransactions() {
       </CardHeader>
       <CardContent>
         <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-          {MOCK_RECENT_TRANSACTIONS.map((tx) => (
+          {list.map((tx) => (
             <div key={tx.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 px-2 rounded-xl transition-colors">
               <div className="flex items-center gap-3 truncate">
                 <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">

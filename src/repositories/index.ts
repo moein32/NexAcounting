@@ -314,7 +314,39 @@ export const DocumentRepository = {
 
   getItems(documentId: string): DocumentItem[] {
     const all = db.queryAll<DocumentItem>('document_items');
-    return all.filter((item) => item.document_id === documentId);
+    let items = all.filter((item) => item.document_id === documentId);
+    
+    // Fallback to localStorage if SQLite returned empty
+    if (items.length === 0) {
+      try {
+        const localItems = JSON.parse(localStorage.getItem('nex_demo_document_items_data') || '[]');
+        items = localItems.filter((i: any) => i.document_id === documentId);
+      } catch {
+        // empty
+      }
+    }
+
+    const catalogItems = db.queryAll<any>('items');
+    return items.map((it: any) => {
+      const catItem = catalogItems.find((c) => c.id === it.item_id);
+      const name = catItem?.name || it.item_name || it.productName || it.description || 'کالای نامشخص';
+      const code = catItem?.code || it.item_code || '';
+      const unit = catItem?.unit_name || it.unit_name || 'عدد';
+      return {
+        ...it,
+        item_name: name,
+        productName: name,
+        item_code: code,
+        unit_name: unit,
+        quantity: Number(it.quantity || 0),
+        unit_price: Number(it.unit_price || 0),
+        unitPrice: Number(it.unit_price || 0),
+        discount_amount: Number(it.discount_amount || 0),
+        tax_amount: Number(it.tax_amount || 0),
+        line_total: Number(it.line_total || (it.quantity * it.unit_price) || 0),
+        total: Number(it.line_total || (it.quantity * it.unit_price) || 0),
+      };
+    }) as DocumentItem[];
   },
 
   create(doc: Omit<Document, 'id'> & { id?: string }, items: Omit<DocumentItem, 'id' | 'document_id'>[]): Document {
@@ -473,7 +505,8 @@ export const BackupRepository = {
           'inventory_balances', 'inventory_transactions', 'documents', 'document_items',
           'settings', 'licenses', 'audit_logs', 'cash_accounts', 'payment_methods',
           'treasury_transactions', 'receipts', 'payments', 'checks',
-          'accounts', 'accounting_periods', 'journal_entries', 'journal_lines'
+          'accounts', 'accounting_periods', 'journal_entries', 'journal_lines',
+          'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs'
         ];
         
         // Ensure stateToRestore is structured as a complete DBState object

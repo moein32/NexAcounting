@@ -23,8 +23,14 @@ import {
   Lock,
   RefreshCw,
   AlertCircle,
+  Boxes,
+  Printer,
 } from 'lucide-react';
 import { BackupRepository } from '../../../repositories';
+import { inventoryService } from '../../../services/inventoryService';
+import { CostEngine } from '../../../services/costEngine';
+import { printService } from '../../../services/printService';
+import { PrintSettings, PageSize, InvoiceTemplateId } from '../../../types/print';
 
 export function SettingsPage() {
   const { currentBusiness, currentUser, setCurrentBusiness, updateCurrentUser } = useAppStore();
@@ -35,6 +41,20 @@ export function SettingsPage() {
   const [userName, setUserName] = useState(currentUser.name);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Inventory & Costing Policy States
+  const [negativePolicy, setNegativePolicy] = useState<'block' | 'warn' | 'allow'>(
+    inventoryService.getNegativeStockPolicy(currentBusiness.id)
+  );
+  const [costingMethod, setCostingMethod] = useState<'fifo' | 'weighted_average'>(
+    CostEngine.getCostMethod(currentBusiness.id)
+  );
+  const isCostLocked = CostEngine.isCostMethodLocked(currentBusiness.id);
+
+  // Print Settings State
+  const [printSettings, setPrintSettings] = useState<PrintSettings>(() =>
+    printService.getPrintSettings(currentBusiness.id)
+  );
+
   // Backup States
   const [backupPassword, setBackupPassword] = useState('nexaccounting-secure-pass');
   const [restorePassword, setRestorePassword] = useState('nexaccounting-secure-pass');
@@ -44,6 +64,14 @@ export function SettingsPage() {
   const handleSave = () => {
     setCurrentBusiness({ ...currentBusiness, name: bizName, taxId: bizTaxId });
     updateCurrentUser({ name: userName });
+
+    inventoryService.setNegativeStockPolicy(currentBusiness.id, negativePolicy);
+    if (!isCostLocked) {
+      CostEngine.setCostMethod(currentBusiness.id, costingMethod);
+    }
+
+    printService.savePrintSettings(currentBusiness.id, printSettings);
+
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -236,6 +264,134 @@ export function SettingsPage() {
                 <Monitor className="w-5 h-5" />
                 <span>سیستم</span>
               </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Inventory & Costing Policy Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Boxes className="w-5 h-5 text-emerald-600" />
+              <span>تنظیمات انبار، ارزش‌گذاری و موجودی منفی</span>
+            </CardTitle>
+            <CardDescription>تعیین روش ارزیابی کالا و سیاست کنترلی موجودی منفی</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>روش ارزش‌گذاری موجودی انبار</span>
+                {isCostLocked && (
+                  <Badge variant="warning" className="text-[10px]">
+                    قفل شده (اسناد صادر شده)
+                  </Badge>
+                )}
+              </label>
+              <Select
+                value={costingMethod}
+                disabled={isCostLocked}
+                options={[
+                  { value: 'weighted_average', label: 'میانگین موزون (Weighted Average)' },
+                  { value: 'fifo', label: 'اولین صادره از اولین وارده (FIFO)' },
+                ]}
+                onChange={(e) => setCostingMethod(e.target.value as any)}
+              />
+              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                {isCostLocked
+                  ? 'به دلیل ثبت اسناد مالی و مصرف Layer در این سال مالی، روش ارزش‌گذاری قفل شده است تا سود و COGS دگرگون نشود.'
+                  : 'روش ارزش‌گذاری جهت محاسبه بهای تمام‌شده و Layerهای انبار.'}
+              </p>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                سیاست خروج کالا و فروش با موجودی منفی
+              </label>
+              <Select
+                value={negativePolicy}
+                options={[
+                  { value: 'block', label: '۱. کاملاً جلوگیری کن و مانع صدور فاکتور شو (پیش‌فرض امن)' },
+                  { value: 'warn', label: '۲. فقط هشدار بده ولی اجازه صدور فاکتور بده' },
+                  { value: 'allow', label: '۳. اجازه فروش با موجودی منفی (تأیید خودکار Deficit Layer)' },
+                ]}
+                onChange={(e) => setNegativePolicy(e.target.value as any)}
+              />
+              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                در حالت اجازه فروش، سیستم Layer منفی (Deficit) با قیمت مبنا ایجاد کرده و با اولین فاکتور خرید بعدی به صورت خودکار تسویه می‌شود.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Print Engine & Invoice Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Printer className="w-5 h-5 text-blue-600" />
+              <span>تنظیمات پیش‌فرض چاپ و قالب فاکتورها</span>
+            </CardTitle>
+            <CardDescription>تعیین سایز کاغذ، قالب پیش‌فرض، حاشیه‌ها و فیلدهای نمایشی فاکتور</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  قالب پیش‌فرض فاکتور
+                </label>
+                <Select
+                  value={printSettings.templateId}
+                  options={[
+                    { value: 'official', label: '۱. قالب رسمی (استاندارد مودیان/دارایی)' },
+                    { value: 'simple', label: '۲. قالب ساده و مینیمال' },
+                    { value: 'modern', label: '۳. قالب فروشگاهی مدرن' },
+                    { value: 'compact', label: '۴. قالب فشرده (A5/حرارتی)' },
+                  ]}
+                  onChange={(e) => setPrintSettings({ ...printSettings, templateId: e.target.value as InvoiceTemplateId })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  سایز پیش‌فرض کاغذ
+                </label>
+                <Select
+                  value={printSettings.pageSize}
+                  options={[
+                    { value: 'A4', label: 'کاغذ A4 (استاندارد)' },
+                    { value: 'A5', label: 'کاغذ A5' },
+                    { value: 'thermal', label: 'رول پرینتر حرارتی (80mm)' },
+                  ]}
+                  onChange={(e) => setPrintSettings({ ...printSettings, pageSize: e.target.value as PageSize })}
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                تنظیمات پیش‌فرض نمایش فیلدها
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                {[
+                  { key: 'showLogo', label: 'نمایش لوگو' },
+                  { key: 'showEconomicDetails', label: 'شناسه اقتصادی' },
+                  { key: 'showWarehouse', label: 'نام انبار' },
+                  { key: 'showDiscount', label: 'تخفیفات' },
+                  { key: 'showTax', label: 'مالیات' },
+                  { key: 'showSignatures', label: 'کادر امضا و مهر' },
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(printSettings[item.key as keyof PrintSettings])}
+                      onChange={(e) =>
+                        setPrintSettings({ ...printSettings, [item.key]: e.target.checked })
+                      }
+                      className="w-4 h-4 accent-blue-600 rounded"
+                    />
+                    <span className="text-slate-700 dark:text-slate-300">{item.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

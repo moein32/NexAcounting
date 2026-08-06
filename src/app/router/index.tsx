@@ -75,8 +75,9 @@ import { ChartOfAccountsPage } from '../../features/accounting/pages/ChartOfAcco
 import { JournalPage } from '../../features/accounting/pages/JournalPage';
 import { LedgerPage } from '../../features/accounting/pages/LedgerPage';
 
-// Reports & Settings
+// Reports, Export Center & Settings
 import { ReportsPage } from '../../features/reports/pages/ReportsPage';
+import { ExportCenterPage } from '../../features/export/pages/ExportCenterPage';
 import { SettingsPage } from '../../features/settings/pages/SettingsPage';
 
 export function AppRouter() {
@@ -170,8 +171,9 @@ export function AppRouter() {
         <Route path="/accounting/journal" element={<JournalPage />} />
         <Route path="/accounting/ledger" element={<LedgerPage />} />
 
-        {/* Reports & Settings */}
+        {/* Reports, Export Center & Settings */}
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/export-center" element={<ExportCenterPage />} />
         <Route path="/settings" element={<SettingsPage />} />
 
         {/* 404 Route */}

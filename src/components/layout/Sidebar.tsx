@@ -22,6 +22,7 @@ import {
   Building2,
   Sparkles,
   ShieldCheck,
+  Database,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/Badge';
@@ -37,6 +38,7 @@ const iconMap: Record<string, React.ElementType> = {
   CreditCard,
   Calculator,
   BarChart3,
+  Database,
   Settings,
 };
 

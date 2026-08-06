@@ -153,9 +153,9 @@ import { InventoryRepository } from '../repositories';
 function getFromStorage<T>(key: string, initial: T[]): T[] {
   try {
     if (key === STORAGE_KEYS.WAREHOUSES) {
-      const list = InventoryRepository.getWarehouses('demo_biz_1') as unknown as T[];
-      if (list.length === 0) return initial;
-      return list;
+      const list = db.queryAll<Warehouse>('warehouses');
+      if (list.length === 0) return initial as unknown as T[];
+      return list as unknown as T[];
     }
     if (key === STORAGE_KEYS.BALANCES) {
       const list = InventoryRepository.getBalances() as unknown as T[];
@@ -224,29 +224,59 @@ function setToStorage<T>(key: string, data: T[]) {
 export const inventoryService = {
   // --- SETTINGS ---
   getAllowNegativeStock(businessId: string): boolean {
-    const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}`;
+    const policy = this.getNegativeStockPolicy(businessId);
+    return policy !== 'block';
+  },
+
+  getNegativeStockPolicy(businessId: string): 'block' | 'warn' | 'allow' {
+    const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}_policy`;
     try {
       const val = localStorage.getItem(settingKey);
-      return val === 'true';
+      if (val === 'warn' || val === 'allow' || val === 'block') return val;
+      // Fallback check old boolean setting
+      const oldVal = localStorage.getItem(`${STORAGE_KEYS.ALLOW_NEG}_${businessId}`);
+      if (oldVal === 'true') return 'allow';
+      return 'block'; // Default strict policy
     } catch {
-      return false;
+      return 'block';
     }
   },
 
-  setAllowNegativeStock(businessId: string, allowed: boolean) {
-    const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}`;
+  setNegativeStockPolicy(businessId: string, policy: 'block' | 'warn' | 'allow') {
+    const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}_policy`;
     try {
-      localStorage.setItem(settingKey, allowed ? 'true' : 'false');
+      localStorage.setItem(settingKey, policy);
+      localStorage.setItem(`${STORAGE_KEYS.ALLOW_NEG}_${businessId}`, policy !== 'block' ? 'true' : 'false');
     } catch (e) {
       console.error(e);
     }
   },
 
+  setAllowNegativeStock(businessId: string, allowed: boolean) {
+    this.setNegativeStockPolicy(businessId, allowed ? 'allow' : 'block');
+  },
+
   // --- WAREHOUSES ---
   async getWarehouses(businessId: string): Promise<Warehouse[]> {
     if (!isSupabaseConfigured()) {
-      const warehouses = getFromStorage<Warehouse>(STORAGE_KEYS.WAREHOUSES, INITIAL_WAREHOUSES)
-        .filter((w) => w.business_id === businessId);
+      let warehouses = db.queryByBusiness<Warehouse>('warehouses', businessId);
+      if (warehouses.length === 0) {
+        const defaultWh: Warehouse = {
+          id: `wh_default_${businessId}`,
+          business_id: businessId,
+          name: 'انبار مرکزی دنا',
+          code: 'WH-01',
+          description: 'انبار اصلی ثبت و دریافت کالاها',
+          address: null,
+          manager_name: null,
+          phone: null,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        db.insertRecord('warehouses', defaultWh);
+        warehouses = [defaultWh];
+      }
 
       const balances = getFromStorage<InventoryBalance>(STORAGE_KEYS.BALANCES, INITIAL_BALANCES);
       const locations = getFromStorage<WarehouseLocation>(STORAGE_KEYS.LOCATIONS, INITIAL_LOCATIONS);
@@ -314,14 +344,14 @@ export const inventoryService = {
     if (!name) throw new Error('نام انبار الزامی است');
 
     if (!isSupabaseConfigured()) {
-      const list = getFromStorage<Warehouse>(STORAGE_KEYS.WAREHOUSES, INITIAL_WAREHOUSES);
+      const list = db.queryByBusiness<Warehouse>('warehouses', businessId);
       const code = input.code?.trim() || null;
 
-      if (code && list.some((w) => w.business_id === businessId && w.code === code)) {
+      if (code && list.some((w) => w.code === code)) {
         throw new Error('کد انبار وارد شده تکراری است');
       }
 
-      const id = `wh_${Date.now()}`;
+      const id = `wh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const now = new Date().toISOString();
       const newWh: Warehouse = {
         id,
@@ -337,8 +367,7 @@ export const inventoryService = {
         updated_at: now,
       };
 
-      list.unshift(newWh);
-      setToStorage(STORAGE_KEYS.WAREHOUSES, list);
+      db.insertRecord<Warehouse>('warehouses', newWh);
 
       if (currentUserId) {
         await authService.logAuditAction({
@@ -397,23 +426,22 @@ export const inventoryService = {
     currentUserId?: string
   ): Promise<Warehouse> {
     if (!isSupabaseConfigured()) {
-      const list = getFromStorage<Warehouse>(STORAGE_KEYS.WAREHOUSES, INITIAL_WAREHOUSES);
-      const idx = list.findIndex((w) => w.id === id);
-      if (idx < 0) throw new Error('انبار یافت نشد');
+      const existing = db.queryById<Warehouse>('warehouses', id);
+      if (!existing) throw new Error('انبار یافت نشد');
 
       const code = input.code?.trim() || null;
-      if (code && list.some((w) => w.business_id === businessId && w.code === code && w.id !== id)) {
+      const list = db.queryByBusiness<Warehouse>('warehouses', businessId);
+      if (code && list.some((w) => w.code === code && w.id !== id)) {
         throw new Error('کد انبار وارد شده تکراری است');
       }
 
       const updatedWh: Warehouse = {
-        ...list[idx],
+        ...existing,
         ...input,
         updated_at: new Date().toISOString(),
       };
 
-      list[idx] = updatedWh;
-      setToStorage(STORAGE_KEYS.WAREHOUSES, list);
+      db.updateRecord<Warehouse>('warehouses', id, updatedWh);
 
       if (currentUserId) {
         await authService.logAuditAction({
@@ -1026,7 +1054,7 @@ export const inventoryService = {
         throw new Error('سند فاقد آیتم است');
       }
 
-      const allowNegative = this.getAllowNegativeStock(businessId);
+      const policy = this.getNegativeStockPolicy(businessId);
 
       // Determine Transaction types
       let txInType: TransactionType | null = null;
@@ -1044,8 +1072,8 @@ export const inventoryService = {
         txOutType = 'adjustment_out';
       }
 
-      // Check stock levels first for outgoing transactions if negative stock is not allowed
-      if (txOutType && !allowNegative) {
+      // Check stock levels first for outgoing transactions according to negative stock policy
+      if (txOutType && policy !== 'allow') {
         for (const itemRow of activeItems) {
           const currentBal = balances.find(
             (b) => b.warehouse_id === doc.warehouse_id && b.item_id === itemRow.item_id
@@ -1053,9 +1081,15 @@ export const inventoryService = {
           const currentQty = currentBal ? currentBal.quantity : 0;
           if (currentQty < itemRow.quantity) {
             const catItem = catalogItems.find(ci => ci.id === itemRow.item_id);
-            throw new Error(
-              `موجودی کالای "${catItem?.name || 'نامشخص'}" کافی نیست (موجودی فعلی: ${currentQty}، درخواستی: ${itemRow.quantity})`
-            );
+            if (policy === 'block') {
+              throw new Error(
+                `خروج موجودی منفی مسدود شده است! موجودی کالای "${catItem?.name || 'نامشخص'}" کافی نیست (موجودی فعلی: ${currentQty}، درخواستی: ${itemRow.quantity})`
+              );
+            } else if (policy === 'warn') {
+              console.warn(
+                `هشدار موجودی منفی: موجودی کالای "${catItem?.name || 'نامشخص'}" کافی نیست (موجودی: ${currentQty}، درخواستی: ${itemRow.quantity})`
+              );
+            }
           }
         }
       }

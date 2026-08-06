@@ -11,7 +11,7 @@ import { Input } from '../../../components/ui/Input';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Select } from '../../../components/ui/Select';
 import { Card } from '../../../components/ui/Card';
-import { Table, TableHead, TableBody, TableRow, TableCell } from '../../../components/ui/Table';
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '../../../components/ui/Table';
 import { Badge } from '../../../components/ui/Badge';
 import { Dropdown } from '../../../components/ui/Dropdown';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
@@ -248,7 +248,7 @@ export function PartiesListPage({
           <div className="hidden md:block">
             <Card className="overflow-hidden">
               <Table>
-                <TableHead>
+                <TableHeader>
                   <TableRow>
                     <TableCell isHeader>نام طرف حساب</TableCell>
                     <TableCell isHeader>نوع شخص</TableCell>
@@ -263,7 +263,7 @@ export function PartiesListPage({
                       عملیات
                     </TableCell>
                   </TableRow>
-                </TableHead>
+                </TableHeader>
                 <TableBody>
                   {parties.map((party) => (
                     <TableRow key={party.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">

@@ -196,6 +196,108 @@ export const AccountingEngine = {
   },
 
   /**
+   * Auto-post Sales Return (برگشت از فروش)
+   */
+  postSalesReturn(
+    businessId: string,
+    doc: {
+      id: string;
+      date: string;
+      party_id: string;
+      grand_total: number;
+      is_cash?: boolean;
+      number: string;
+    }
+  ) {
+    const isCash = doc.is_cash ?? true;
+    const amount = Number(doc.grand_total);
+    if (amount <= 0) return;
+
+    const description = `ثبت خودکار فاکتور برگشت از فروش شماره ${doc.number}`;
+    const creditCode = isCash ? '1010' : '1020';
+
+    const lines = [
+      {
+        account_code: '4010', // Reduce Sales Revenue
+        party_id: null,
+        debit: amount,
+        credit: 0,
+        description: `بدهکار: کاهش درآمد فروش کالا بابت برگشت از فروش ${doc.number}`,
+      },
+      {
+        account_code: creditCode,
+        party_id: isCash ? null : doc.party_id,
+        debit: 0,
+        credit: amount,
+        description: `بستانکار: ${isCash ? 'صندوق و بانک' : 'مشتری'} بابت برگشت از فروش ${doc.number}`,
+      }
+    ];
+
+    return this.createJournalEntry(
+      businessId,
+      {
+        date: doc.date,
+        description,
+        reference_type: 'sales_invoice',
+        reference_id: doc.id,
+        status: 'posted',
+      },
+      lines
+    );
+  },
+
+  /**
+   * Auto-post Purchase Return (برگشت از خرید)
+   */
+  postPurchaseReturn(
+    businessId: string,
+    doc: {
+      id: string;
+      date: string;
+      party_id: string;
+      grand_total: number;
+      is_cash?: boolean;
+      number: string;
+    }
+  ) {
+    const isCash = doc.is_cash ?? true;
+    const amount = Number(doc.grand_total);
+    if (amount <= 0) return;
+
+    const description = `ثبت خودکار فاکتور برگشت از خرید شماره ${doc.number}`;
+    const debitCode = isCash ? '1010' : '2010';
+
+    const lines = [
+      {
+        account_code: debitCode,
+        party_id: isCash ? null : doc.party_id,
+        debit: amount,
+        credit: 0,
+        description: `بدهکار: ${isCash ? 'صندوق و بانک' : 'تامین‌کننده'} بابت برگشت از خرید ${doc.number}`,
+      },
+      {
+        account_code: '1030', // Reduce Inventory Asset
+        party_id: null,
+        debit: 0,
+        credit: amount,
+        description: `بستانکار: موجودی کالا بابت برگشت از خرید ${doc.number}`,
+      }
+    ];
+
+    return this.createJournalEntry(
+      businessId,
+      {
+        date: doc.date,
+        description,
+        reference_type: 'purchase_invoice',
+        reference_id: doc.id,
+        status: 'posted',
+      },
+      lines
+    );
+  },
+
+  /**
    * 3. Auto-post Receipt (دریافت نقدی)
    */
   postReceipt(

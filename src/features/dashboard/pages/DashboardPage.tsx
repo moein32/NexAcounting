@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { DashboardStats, SecondaryDashboardStats } from '../components/DashboardStats';
 import { SalesChart } from '../components/SalesChart';
@@ -6,13 +6,35 @@ import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { SystemAlerts } from '../components/SystemAlerts';
 import { QuickActions } from '../components/QuickActions';
-import { LayoutDashboard, Download, RefreshCw, Building2, UserCheck, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Download, RefreshCw, Building2, UserCheck, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../stores/authStore';
+import { useAppStore } from '../../../stores/appStore';
+import { biService } from '../../../services/biService';
 import { Badge } from '../../../components/ui/Badge';
 
 export function DashboardPage() {
-  const { currentBusiness, profile, user, currentRole, isDemoMode } = useAuthStore();
+  const { profile, user, currentRole, isDemoMode } = useAuthStore();
+  const { currentBusiness } = useAppStore();
+  const [metrics, setMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    if (!currentBusiness?.id) return;
+    setLoading(true);
+    try {
+      const data = await biService.getDashboardMetrics(currentBusiness.id);
+      setMetrics(data);
+    } catch (e) {
+      console.error('Error fetching dashboard business intelligence data', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [currentBusiness?.id]);
 
   return (
     <div className="space-y-6">
@@ -49,8 +71,9 @@ export function DashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.location.reload()}
-              icon={<RefreshCw className="w-3.5 h-3.5" />}
+              onClick={fetchDashboardData}
+              disabled={loading}
+              icon={loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               className="bg-white/10 text-white border-white/20 hover:bg-white/20"
             >
               به‌روزرسانی
@@ -59,39 +82,52 @@ export function DashboardPage() {
               variant="primary"
               size="sm"
               icon={<Download className="w-3.5 h-3.5" />}
+              onClick={() => window.print()}
               className="bg-white text-blue-700 hover:bg-blue-50 border-0 font-bold"
             >
-              گزارش سریع
+              پرینت صفحه
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Stat Cards */}
-      <DashboardStats />
-
-      {/* Quick Action Shortcuts */}
-      <QuickActions />
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SalesChart />
-        <IncomeExpenseChart />
-      </div>
-
-      {/* Secondary Stats */}
-      <SecondaryDashboardStats />
-
-      {/* Transactions & Alerts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentTransactions />
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-500">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <span className="text-xs font-semibold">در حال محاسبه و پردازش شاخص‌های هوشمند مالی...</span>
         </div>
-        <div className="lg:col-span-1">
-          <SystemAlerts />
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Main Stat Cards */}
+          <DashboardStats metrics={metrics} />
+
+          {/* Quick Action Shortcuts */}
+          <QuickActions />
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SalesChart data={metrics?.monthlyTrend} />
+            <IncomeExpenseChart data={metrics?.dailyFlow} />
+          </div>
+
+          {/* Secondary Stats */}
+          <SecondaryDashboardStats metrics={metrics} />
+
+          {/* Transactions & Alerts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <RecentTransactions transactions={metrics?.recentTransactions} />
+            </div>
+            <div className="lg:col-span-1">
+              <SystemAlerts 
+                lowStockItems={metrics?.lowStockItems}
+                upcomingChecks={metrics?.upcomingChecks}
+                upcomingCommitments={metrics?.upcomingCommitments}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
-

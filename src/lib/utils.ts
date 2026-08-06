@@ -17,9 +17,11 @@ export function formatNumber(num: number): string {
   return new Intl.NumberFormat('fa-IR').format(num);
 }
 
-export function formatPersianDate(dateString: string): string {
+export function formatPersianDate(dateString?: string | null): string {
+  if (!dateString) return '---';
   try {
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
     return new Intl.DateTimeFormat('fa-IR', {
       year: 'numeric',
       month: 'long',

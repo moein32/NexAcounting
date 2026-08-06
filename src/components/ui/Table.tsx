@@ -43,7 +43,21 @@ export function TableHead({ className, children, ...props }: React.ThHTMLAttribu
   );
 }
 
-export function TableCell({ className, children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
+export interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  isHeader?: boolean;
+  children?: React.ReactNode;
+  className?: string;
+  key?: React.Key;
+}
+
+export function TableCell({ className, children, isHeader, ...props }: TableCellProps) {
+  if (isHeader) {
+    return (
+      <th className={cn('px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap text-right', className)} {...props}>
+        {children}
+      </th>
+    );
+  }
   return (
     <td className={cn('px-4 py-3.5 whitespace-nowrap align-middle', className)} {...props}>
       {children}

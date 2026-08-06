@@ -10,7 +10,7 @@ import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Tabs, TabItem } from '../../../components/ui/Tabs';
-import { Table, TableHead, TableBody, TableRow, TableCell } from '../../../components/ui/Table';
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '../../../components/ui/Table';
 import { LoadingState } from '../../../components/ui/LoadingState';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
@@ -403,7 +403,7 @@ export function PartyDetailPage() {
             />
           ) : (
             <Table>
-              <TableHead>
+              <TableHeader>
                 <TableRow>
                   <TableCell isHeader>نام و نام خانوادگی</TableCell>
                   <TableCell isHeader>سمت / موقعیت</TableCell>
@@ -411,7 +411,7 @@ export function PartyDetailPage() {
                   <TableCell isHeader>تلفن ثابت</TableCell>
                   <TableCell isHeader>ایمیل</TableCell>
                 </TableRow>
-              </TableHead>
+              </TableHeader>
               <TableBody>
                 {party.contacts.map((c, i) => (
                   <TableRow key={c.id || i}>
@@ -535,7 +535,7 @@ export function PartyDetailPage() {
           </div>
 
           <Table>
-            <TableHead>
+            <TableHeader>
               <TableRow>
                 <TableCell isHeader>تاریخ</TableCell>
                 <TableCell isHeader>نوع سند</TableCell>
@@ -545,7 +545,7 @@ export function PartyDetailPage() {
                 <TableCell isHeader>بستانکار (-)</TableCell>
                 <TableCell isHeader>مانده (تراز)</TableCell>
               </TableRow>
-            </TableHead>
+            </TableHeader>
             <TableBody>
               {ledgerEntries.map((entry) => (
                 <TableRow key={entry.id}>

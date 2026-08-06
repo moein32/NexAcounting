@@ -198,18 +198,26 @@ const INITIAL_SEQUENCES: DocumentNumberSequence[] = [
 
 import { db } from '../lib/sqlite';
 import { DocumentRepository } from '../repositories';
+import { CostEngine } from './costEngine';
+import { AccountingEngine } from './accountingEngine';
 
 // LocalStorage helpers
 function getFromStorage<T>(key: string, initial: T[]): T[] {
   try {
     if (key === STORAGE_KEYS.DOCUMENTS) {
       const list = DocumentRepository.getAll('demo_biz_1') as unknown as T[];
-      if (list.length === 0) return initial;
+      if (list.length === 0) {
+        setToStorage(STORAGE_KEYS.DOCUMENTS, initial);
+        return initial;
+      }
       return list;
     }
     if (key === STORAGE_KEYS.ITEMS) {
       const list = db.queryAll('document_items') as unknown as T[];
-      if (list.length === 0) return initial;
+      if (list.length === 0) {
+        setToStorage(STORAGE_KEYS.ITEMS, initial);
+        return initial;
+      }
       return list;
     }
     const raw = localStorage.getItem(key);
@@ -439,23 +447,42 @@ export const documentService = {
       const catalogItemsResponse = await itemService.getItems(businessId);
       const catalogItems = catalogItemsResponse.data || [];
 
-      const doc = docs.find((d) => d.id === id && d.business_id === businessId);
+      let doc = docs.find((d) => d.id === id && d.business_id === businessId);
+      if (!doc) {
+        doc = DocumentRepository.getById(id) as unknown as Document;
+      }
       if (!doc) throw new Error('سند یافت نشد');
 
       const party = parties.find((p) => p.id === doc.party_id);
       const wh = warehouses.find((w) => w.id === doc.warehouse_id);
 
-      const activeItems = docItems
-        .filter((it) => it.document_id === id)
-        .map((it) => {
-          const catalogItem = catalogItems.find((ci) => ci.id === it.item_id);
-          return {
-            ...it,
-            item_name: catalogItem?.name || 'کالای حذف شده',
-            item_code: catalogItem?.code || '',
-            unit_name: catalogItem?.unit?.name || 'عدد',
-          };
-        });
+      let rawItems: any[] = docItems.filter((it) => it.document_id === id);
+      if (rawItems.length === 0) {
+        rawItems = DocumentRepository.getItems(id) as any[];
+      }
+
+      const activeItems: DocumentItem[] = rawItems.map((it: any) => {
+        const catalogItem = catalogItems.find((ci) => ci.id === it.item_id);
+        const name = catalogItem?.name || it.item_name || it.productName || it.description || 'کالای نامشخص';
+        const code = catalogItem?.code || it.item_code || '';
+        const unit = catalogItem?.unit?.name || it.unit_name || 'عدد';
+        const subtotalVal = Number(it.line_subtotal || it.line_total || (it.quantity * it.unit_price) || 0);
+        return {
+          ...it,
+          item_name: name,
+          productName: name,
+          item_code: code,
+          unit_name: unit,
+          quantity: Number(it.quantity || 0),
+          unit_price: Number(it.unit_price || 0),
+          unitPrice: Number(it.unit_price || 0),
+          discount_amount: Number(it.discount_amount || 0),
+          tax_amount: Number(it.tax_amount || 0),
+          line_subtotal: subtotalVal,
+          line_total: Number(it.line_total || subtotalVal || 0),
+          total: Number(it.line_total || subtotalVal || 0),
+        };
+      });
 
       return {
         ...doc,
@@ -945,6 +972,67 @@ export const documentService = {
         setToStorage(STORAGE_KEYS.DOCUMENTS, docs);
       }
 
+      // Trigger CostEngine and AccountingEngine
+      db.beginTransaction();
+      try {
+        const fullDoc = await this.getDocumentById(businessId, id);
+        
+        if (fullDoc.document_type === 'purchase_invoice') {
+          // Process cost layers
+          CostEngine.handlePurchase(businessId, fullDoc);
+          // Post ledger entry
+          AccountingEngine.postPurchaseInvoice(businessId, {
+            id: fullDoc.id,
+            date: fullDoc.document_date,
+            party_id: fullDoc.party_id,
+            grand_total: fullDoc.grand_total,
+            is_cash: fullDoc.is_cash,
+            number: fullDoc.document_number,
+          });
+        } else if (fullDoc.document_type === 'sales_invoice') {
+          // Process COGS, consume layers, post COGS entries & accounting
+          CostEngine.handleSale(businessId, fullDoc);
+          // Post main ledger entry
+          AccountingEngine.postSalesInvoice(businessId, {
+            id: fullDoc.id,
+            date: fullDoc.document_date,
+            party_id: fullDoc.party_id,
+            grand_total: fullDoc.grand_total,
+            is_cash: fullDoc.is_cash,
+            number: fullDoc.document_number,
+          });
+        } else if (fullDoc.document_type === 'sales_return') {
+          // Restore cost layers
+          CostEngine.handleSalesReturn(businessId, fullDoc);
+          // Post sales return ledger entry
+          AccountingEngine.postSalesReturn(businessId, {
+            id: fullDoc.id,
+            date: fullDoc.document_date,
+            party_id: fullDoc.party_id,
+            grand_total: fullDoc.grand_total,
+            is_cash: fullDoc.is_cash,
+            number: fullDoc.document_number,
+          });
+        } else if (fullDoc.document_type === 'purchase_return') {
+          // Reduce cost layers
+          CostEngine.handlePurchaseReturn(businessId, fullDoc);
+          // Post purchase return ledger entry
+          AccountingEngine.postPurchaseReturn(businessId, {
+            id: fullDoc.id,
+            date: fullDoc.document_date,
+            party_id: fullDoc.party_id,
+            grand_total: fullDoc.grand_total,
+            is_cash: fullDoc.is_cash,
+            number: fullDoc.document_number,
+          });
+        }
+        db.commit();
+      } catch (err: any) {
+        db.rollback();
+        console.error('Cost/Accounting Confirmation Error:', err);
+        throw new Error(`خطا در صدور اسناد مالی و بهای تمام‌شده: ${err.message}`);
+      }
+
       await this.createDocumentEvent(
         businessId,
         id,
@@ -1032,6 +1120,24 @@ export const documentService = {
         docs[docIdx].cancelled_by = currentUserId || 'demo_user_1';
         docs[docIdx].cancelled_at = new Date().toISOString();
         setToStorage(STORAGE_KEYS.DOCUMENTS, docs);
+      }
+
+      // Reverse financial and costing implications
+      db.beginTransaction();
+      try {
+        // Reverse cost layers and COGS journal
+        CostEngine.handleCancellation(businessId, doc);
+
+        // Reverse main invoice accounting entry
+        const allEntries = db.queryAll<any>('journal_entries');
+        const mainEntry = allEntries.find(e => e.reference_id === id && e.status === 'posted');
+        if (mainEntry) {
+          AccountingEngine.reverseEntry(mainEntry.id, businessId);
+        }
+        db.commit();
+      } catch (err: any) {
+        db.rollback();
+        console.error('Cancellation Cost/Accounting Reversal Error:', err);
       }
 
       await this.createDocumentEvent(

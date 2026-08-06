@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/authStore';
 import { documentService } from '../../../services/documentService';
+import { db } from '../../../lib/sqlite';
 import { Document, DocumentEvent } from '../../../types/document';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -24,6 +25,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { PrintInvoiceModal } from '../../../components/invoice/PrintInvoiceModal';
+import { printService } from '../../../services/printService';
+import { InvoiceTemplateRenderer } from '../../../components/invoice/InvoiceTemplateRenderer';
+
 export function SalesDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -32,7 +37,8 @@ export function SalesDetailPage() {
   const [events, setEvents] = useState<DocumentEvent[]>(null as any);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [profitInfo, setProfitInfo] = useState<{ cogs: number; profit: number; margin: number } | null>(null);
 
   useEffect(() => {
     if (currentBusiness && id) {
@@ -46,6 +52,17 @@ export function SalesDetailPage() {
       setError(null);
       const fetchedDoc = await documentService.getDocumentById(currentBusiness!.id, id!);
       setDoc(fetchedDoc);
+      
+      if (fetchedDoc && fetchedDoc.document_type === 'sales_invoice' && fetchedDoc.status === 'confirmed') {
+        const cogsRows = db.queryAll<any>('cogs_entries').filter(c => c.document_id === fetchedDoc.id);
+        const invoiceCOGS = cogsRows.reduce((sum, c) => sum + Number(c.total_cost || 0), 0);
+        const profit = fetchedDoc.grand_total - invoiceCOGS;
+        const margin = fetchedDoc.grand_total > 0 ? (profit / fetchedDoc.grand_total) * 100 : 0;
+        setProfitInfo({ cogs: invoiceCOGS, profit, margin });
+      } else {
+        setProfitInfo(null);
+      }
+
       const fetchedEvents = await documentService.getDocumentEvents(currentBusiness!.id, id!);
       setEvents(fetchedEvents);
     } catch (err: any) {
@@ -100,11 +117,7 @@ export function SalesDetailPage() {
   };
 
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 300);
+    setShowPrintModal(true);
   };
 
   if (loading && !doc) {
@@ -266,7 +279,7 @@ export function SalesDetailPage() {
                     <tr key={item.id || index} className="text-slate-800 dark:text-slate-200">
                       <td className="py-3 px-1 text-center font-bold">{index + 1}</td>
                       <td className="py-3 px-2">
-                        <p className="font-bold">{item.item_name}</p>
+                        <p className="font-bold">{item.item_name || (item as any).productName || item.description || 'کالای نامشخص'}</p>
                         {item.description && <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>}
                       </td>
                       <td className="py-3 px-2 text-center font-bold">
@@ -384,6 +397,39 @@ export function SalesDetailPage() {
             </div>
           </Card>
 
+          {/* Profit analysis card (only for confirmed sales invoice) */}
+          {doc.document_type === 'sales_invoice' && doc.status === 'confirmed' && profitInfo && (
+            <Card className="p-6 border border-emerald-100 dark:border-emerald-900/30 bg-gradient-to-br from-emerald-50/40 to-emerald-100/10 dark:from-emerald-950/20 dark:to-teal-950/10 rounded-2xl">
+              <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-400 mb-4 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <span>تحلیل سودآوری واقعی فاکتور</span>
+              </h3>
+
+              <div className="space-y-4 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">بهای تمام‌شده کالا (COGS):</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    {formatCurrency(profitInfo.cogs, 'تومان')}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center border-t border-emerald-100/50 dark:border-emerald-900/10 pt-3">
+                  <span className="text-slate-500">سود ناخالص فروش:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(profitInfo.profit, 'تومان')}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">حاشیه سود ناخالص:</span>
+                  <span className={`font-bold px-2 py-0.5 rounded-full ${profitInfo.margin >= 30 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400'}`}>
+                    {profitInfo.margin.toFixed(1)}٪
+                  </span>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Document Event Log / History (Kardex-like Audit Log) */}
           <Card className="p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl">
             <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
@@ -415,6 +461,15 @@ export function SalesDetailPage() {
           </Card>
         </div>
       </div>
+
+      {doc && (
+        <PrintInvoiceModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          document={doc}
+          business={currentBusiness}
+        />
+      )}
     </div>
   );
 }

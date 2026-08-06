@@ -37,3 +37,58 @@
   background: rgba(148, 163, 184, 0.6);
 }
 
+/* Print System & Invoice Engine CSS */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide all non-printable UI elements */
+  body * {
+    visibility: hidden;
+  }
+
+  .no-print,
+  nav,
+  header,
+  aside,
+  button,
+  footer,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* Force printable invoice content and its children to be visible */
+  .printable-invoice-content,
+  .printable-invoice-content * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Position invoice printable container at the top left of the physical page */
+  .printable-invoice-content {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  tr, table, div {
+    page-break-inside: avoid;
+  }
+}
+

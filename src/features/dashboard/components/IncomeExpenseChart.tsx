@@ -5,7 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { formatCurrency } from '../../../lib/utils';
 import { Scale } from 'lucide-react';
 
-export function IncomeExpenseChart() {
+interface IncomeExpenseChartProps {
+  data?: {
+    name: string;
+    income: number;
+    expense: number;
+  }[];
+}
+
+export function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
+  const chartData = data && data.length > 0 ? data : MOCK_INCOME_EXPENSE_DATA;
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -39,7 +49,7 @@ export function IncomeExpenseChart() {
       <CardContent className="pt-4">
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MOCK_INCOME_EXPENSE_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
               <YAxis

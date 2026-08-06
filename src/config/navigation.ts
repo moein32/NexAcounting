@@ -97,6 +97,11 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
     iconName: 'BarChart3',
   },
   {
+    title: 'مرکز ورودی و خروجی',
+    path: '/export-center',
+    iconName: 'Database',
+  },
+  {
     title: 'تنظیمات سیستم',
     path: '/settings',
     iconName: 'Settings',
