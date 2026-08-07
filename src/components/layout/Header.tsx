@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../hooks/useTheme';
+import { NotificationBadge } from '../../notifications';
 import {
   Menu,
   Bell,
@@ -167,15 +168,7 @@ export function Header() {
         </button>
 
         {/* Notification Bell */}
-        <div className="relative">
-          <button
-            className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-            title="اعلان‌ها"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
-          </button>
-        </div>
+        <NotificationBadge />
 
         {/* User Profile */}
         <div className="pr-1 border-r border-slate-200 dark:border-slate-800">

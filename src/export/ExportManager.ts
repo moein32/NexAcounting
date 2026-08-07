@@ -1,5 +1,6 @@
 import { ExportEngine } from './ExportEngine';
 import { ExcelImporter } from './importers/ExcelImporter';
+import { NotificationService } from '../notifications';
 import {
   ExportCategory,
   ExportFilterOptions,
@@ -11,6 +12,7 @@ import {
 
 export const ExportManager = {
   async exportData(category: ExportCategory, options: ExportFilterOptions): Promise<void> {
+    const businessId = options.businessId || 'demo_biz_1';
     if (options.format === 'xlsx') {
       await ExportEngine.exportToExcel(category, options);
     } else if (options.format === 'docx') {
@@ -20,6 +22,7 @@ export const ExportManager = {
     } else {
       await ExportEngine.exportToPdf(category, options);
     }
+    NotificationService.notifyExportCompleted(businessId, `export_${category}.${options.format}`);
   },
 
   parseImportFile(arrayBuffer: ArrayBuffer) {
@@ -44,6 +47,10 @@ export const ExportManager = {
     businessId: string,
     validationResult: ImportValidationResult
   ): ImportSummaryReport {
-    return ExcelImporter.executeImport(entityType, businessId, validationResult);
+    const report = ExcelImporter.executeImport(entityType, businessId, validationResult);
+    if (report.importedCount > 0) {
+      NotificationService.notifyImportCompleted(businessId, entityType, report.importedCount);
+    }
+    return report;
   },
 };

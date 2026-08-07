@@ -6,12 +6,14 @@ import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { SystemAlerts } from '../components/SystemAlerts';
 import { QuickActions } from '../components/QuickActions';
+import { MobileDashboard } from '../mobile/MobileDashboard';
 import { LayoutDashboard, Download, RefreshCw, Building2, UserCheck, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../stores/authStore';
 import { useAppStore } from '../../../stores/appStore';
 import { biService } from '../../../services/biService';
 import { Badge } from '../../../components/ui/Badge';
+
 
 export function DashboardPage() {
   const { profile, user, currentRole, isDemoMode } = useAuthStore();
@@ -98,32 +100,38 @@ export function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Main Stat Cards */}
-          <DashboardStats metrics={metrics} />
+          {/* Mobile Specific Dashboard View */}
+          <MobileDashboard metrics={metrics} loading={loading} />
 
-          {/* Quick Action Shortcuts */}
-          <QuickActions />
+          {/* Desktop & Tablet Main Content */}
+          <div className="hidden lg:block space-y-6">
+            {/* Main Stat Cards */}
+            <DashboardStats metrics={metrics} />
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SalesChart data={metrics?.monthlyTrend} />
-            <IncomeExpenseChart data={metrics?.dailyFlow} />
-          </div>
+            {/* Quick Action Shortcuts */}
+            <QuickActions />
 
-          {/* Secondary Stats */}
-          <SecondaryDashboardStats metrics={metrics} />
-
-          {/* Transactions & Alerts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <RecentTransactions transactions={metrics?.recentTransactions} />
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SalesChart data={metrics?.monthlyTrend} />
+              <IncomeExpenseChart data={metrics?.dailyFlow} />
             </div>
-            <div className="lg:col-span-1">
-              <SystemAlerts 
-                lowStockItems={metrics?.lowStockItems}
-                upcomingChecks={metrics?.upcomingChecks}
-                upcomingCommitments={metrics?.upcomingCommitments}
-              />
+
+            {/* Secondary Stats */}
+            <SecondaryDashboardStats metrics={metrics} />
+
+            {/* Transactions & Alerts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <RecentTransactions transactions={metrics?.recentTransactions} />
+              </div>
+              <div className="lg:col-span-1">
+                <SystemAlerts 
+                  lowStockItems={metrics?.lowStockItems}
+                  upcomingChecks={metrics?.upcomingChecks}
+                  upcomingCommitments={metrics?.upcomingCommitments}
+                />
+              </div>
             </div>
           </div>
         </>

@@ -25,12 +25,14 @@ import {
   AlertCircle,
   Boxes,
   Printer,
+  Bell,
 } from 'lucide-react';
 import { BackupRepository } from '../../../repositories';
 import { inventoryService } from '../../../services/inventoryService';
 import { CostEngine } from '../../../services/costEngine';
 import { printService } from '../../../services/printService';
 import { PrintSettings, PageSize, InvoiceTemplateId } from '../../../types/print';
+import { NotificationService } from '../../../notifications';
 
 export function SettingsPage() {
   const { currentBusiness, currentUser, setCurrentBusiness, updateCurrentUser } = useAppStore();
@@ -98,6 +100,8 @@ export function SettingsPage() {
         type: 'success',
         message: 'نسخه پشتیبان با موفقیت ایجاد و فایل رمزگذاری شده (.nxb) دانلود شد.',
       });
+
+      NotificationService.notifyBackupCompleted(currentBusiness.id, `nexaccounting_backup_${dateStr}.nxb`);
     } catch (e: any) {
       setBackupStatus({
         type: 'error',
@@ -120,6 +124,7 @@ export function SettingsPage() {
 
         const success = BackupRepository.importBackup(fileContent);
         if (success) {
+          NotificationService.notifyRestoreCompleted(currentBusiness.id);
           setBackupStatus({
             type: 'success',
             message: 'دیتابیس با موفقیت بازیابی شد. لطفاً چند لحظه صبر کنید تا برنامه مجدداً بارگذاری شود...',

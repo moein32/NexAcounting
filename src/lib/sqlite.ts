@@ -44,6 +44,8 @@ export interface DBState {
   inventory_cost_movements: any[];
   cogs_entries: any[];
   inventory_revaluation_logs: any[];
+  notifications: any[];
+  notification_preferences: any[];
 }
 
 const STORAGE_KEY = 'nex_sqlite_db_state';
@@ -76,7 +78,8 @@ class SqliteDatabaseEngine {
           'settings', 'licenses', 'audit_logs', 'cash_accounts', 'payment_methods',
           'treasury_transactions', 'receipts', 'payments', 'checks',
           'accounts', 'accounting_periods', 'journal_entries', 'journal_lines',
-          'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs'
+          'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs',
+          'notifications', 'notification_preferences'
         ];
         tables.forEach((table) => {
           if (!this.state[table]) {
@@ -151,6 +154,8 @@ class SqliteDatabaseEngine {
       inventory_cost_movements: [],
       cogs_entries: [],
       inventory_revaluation_logs: [],
+      notifications: [],
+      notification_preferences: [],
     };
     this.ensureDefaultBusinesses();
     this.saveState();
