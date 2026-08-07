@@ -2,6 +2,7 @@ import React from 'react';
 import { MobileHeader } from './MobileHeader';
 import { MobileDrawer } from './MobileDrawer';
 import { BottomNavigation } from './BottomNavigation';
+import { FloatingActionButton } from './FloatingActionButton';
 import { useAndroidBackButton } from './useAndroidBackButton';
 import { useUIStore } from '../stores/uiStore';
 
@@ -10,11 +11,11 @@ interface MobileNavigationProps {
 }
 
 export const MobileNavigation: React.FC<MobileNavigationProps> = ({ onOpenSearch }) => {
-  const { isMobileMenuOpen, setMobileMenuOpen } = useUIStore();
+  const { mobileMenuOpen, setMobileMenuOpen } = useUIStore();
 
   // Android hardware back button handler
   useAndroidBackButton(() => {
-    if (isMobileMenuOpen) {
+    if (mobileMenuOpen) {
       setMobileMenuOpen(false);
       return true;
     }
@@ -25,6 +26,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({ onOpenSearch
     <>
       <MobileHeader onOpenSearch={onOpenSearch} />
       <MobileDrawer />
+      <FloatingActionButton />
       <BottomNavigation />
     </>
   );

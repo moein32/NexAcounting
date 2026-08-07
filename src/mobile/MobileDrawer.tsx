@@ -48,21 +48,25 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export const MobileDrawer: React.FC = () => {
-  const { isMobileMenuOpen, setMobileMenuOpen } = useUIStore();
-  const { currentBusiness, profile, user, logout } = useAuthStore();
-  const { theme, toggleTheme } = useTheme();
+  const { mobileMenuOpen, setMobileMenuOpen } = useUIStore();
+  const { currentBusiness, profile, user, signOut } = useAuthStore();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
-  if (!isMobileMenuOpen) return null;
+  if (!mobileMenuOpen) return null;
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const handleNavClick = (path: string) => {
     setMobileMenuOpen(false);
     navigate(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setMobileMenuOpen(false);
-    logout();
+    await signOut();
     navigate('/login');
   };
 
@@ -75,7 +79,7 @@ export const MobileDrawer: React.FC = () => {
           {/* Header */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center shadow-md text-xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black flex items-center justify-center shadow-md text-xs">
                 NEX
               </div>
               <div>
@@ -97,23 +101,23 @@ export const MobileDrawer: React.FC = () => {
           </div>
 
           {/* Business Info Banner */}
-          <div className="p-3 mx-3 my-2 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/50 flex items-center justify-between">
+          <div className="p-3 mx-3 my-2 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-900/50 flex items-center justify-between">
             <div className="flex items-center gap-2 overflow-hidden">
-              <div className="p-2 rounded-lg bg-blue-600 text-white shrink-0">
+              <div className="p-2 rounded-lg bg-indigo-600 text-white shrink-0">
                 <Building2 className="w-4 h-4" />
               </div>
               <div className="truncate">
                 <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block truncate">
                   {currentBusiness?.name || 'کسب‌وکار پیش‌فرض'}
                 </span>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold block">
                   {currentBusiness?.currency || 'تومان'}
                 </span>
               </div>
             </div>
             <button
               onClick={() => handleNavClick('/settings')}
-              className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-xs font-bold shrink-0"
+              className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg text-xs font-bold shrink-0"
               title="تغییر کسب‌وکار"
             >
               تغییر
@@ -134,10 +138,10 @@ export const MobileDrawer: React.FC = () => {
                     <button
                       key={item.path}
                       onClick={() => handleNavClick(item.path)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 active:bg-blue-50 dark:active:bg-blue-950/50 transition-colors touch-manipulation text-right min-h-[44px]"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 active:bg-indigo-50 dark:active:bg-indigo-950/50 transition-colors touch-manipulation text-right min-h-[44px]"
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         <span>{item.title}</span>
                       </div>
                       <ChevronLeft className="w-4 h-4 text-slate-400" />

@@ -26,6 +26,7 @@ import {
 import { NotificationItem } from './NotificationItem';
 import { NotificationSettingsModal } from './NotificationSettingsModal';
 import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../design/components/EmptyState';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -120,7 +121,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {/* Top Bar Header */}
             <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="relative p-2.5 rounded-xl bg-blue-600 text-white shadow-md">
+                <div className="relative p-2.5 rounded-xl bg-indigo-600 text-white shadow-md">
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-ping" />
@@ -128,7 +129,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
                       مرکز اعلان‌ها
                     </h3>
                     {unreadCount > 0 && (
@@ -177,7 +178,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   placeholder="جستجو در عنوان یا متن اعلان..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pr-9 pl-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
@@ -187,7 +188,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   onClick={() => setReadStatus('ALL')}
                   className={`flex-1 py-1 text-center font-bold rounded-lg transition-all ${
                     readStatus === 'ALL'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -197,7 +198,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   onClick={() => setReadStatus('UNREAD')}
                   className={`flex-1 py-1 text-center font-bold rounded-lg transition-all ${
                     readStatus === 'UNREAD'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -207,7 +208,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   onClick={() => setReadStatus('READ')}
                   className={`flex-1 py-1 text-center font-bold rounded-lg transition-all ${
                     readStatus === 'READ'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -232,7 +233,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     onClick={() => setSelectedCategory(cat.id as any)}
                     className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors ${
                       selectedCategory === cat.id
-                        ? 'bg-blue-600 text-white shadow-xs'
+                        ? 'bg-indigo-600 text-white shadow-xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
@@ -262,17 +263,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {/* Notification List Container */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
               {filteredNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 flex items-center justify-center mb-3">
-                    <Inbox className="w-8 h-8" />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    هیچ اعلانی یافت نشد
-                  </h4>
-                  <p className="text-xs text-slate-400 max-w-xs">
-                    با توجه به فیلترهای انتخابی یا شرایط جاری سیستم، هیچ اعلانی وجود ندارد.
-                  </p>
-                </div>
+                <EmptyState
+                  title="همه چیز مرتب است"
+                  description="هیچ اعلان یا هشداری در این فیلتر وجود ندارد."
+                  type="notification"
+                />
               ) : (
                 filteredNotifications.map((notification) => (
                   <NotificationItem
@@ -291,7 +286,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={unreadCount === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <CheckCheck className="w-4 h-4" />
                 خوانده شدن همه
