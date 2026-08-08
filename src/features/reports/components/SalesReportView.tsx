@@ -27,7 +27,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
   if (!data) return null;
 
   const handleExportCSV = () => {
-    const csvRows = data.productsBreakdown.map(p => ({
+    const csvRows = (data.productsBreakdown || []).map(p => ({
       'کد کالا': p.code,
       'نام کالا': p.name,
       'تعداد فروش': p.qty,
@@ -249,7 +249,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {data.invoicesWithProfit.map((inv) => (
+                  {data.invoicesWithProfit?.map((inv) => (
                     <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                       <td className="p-3 font-bold text-slate-900 dark:text-slate-100">{inv.number}</td>
                       <td className="p-3">{inv.customerName}</td>

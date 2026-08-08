@@ -10,9 +10,76 @@ export interface LicenseStatus {
   features: string[];
 }
 
+export interface LicensePlan {
+  id: string;
+  name: string;
+  code: 'free' | 'professional' | 'enterprise';
+  max_devices: number;
+  max_businesses: number;
+  price_monthly: number;
+  price_yearly: number;
+  features: string[];
+}
+
+export interface SubscriptionRecord {
+  id: string;
+  business_id: string;
+  user_id: string;
+  plan_code: 'free' | 'professional' | 'enterprise';
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'expired';
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  created_at: string;
+}
+
+export interface BusinessAccessControl {
+  business_id: string;
+  user_id: string;
+  role: 'owner' | 'manager' | 'accountant' | 'viewer';
+  permissions: string[];
+  is_active: boolean;
+}
+
 const LICENSE_CACHE_KEY = 'nex_license_cache';
 
 export const LicenseService = {
+  // Available Subscription Plans
+  getPlans(): LicensePlan[] {
+    return [
+      {
+        id: 'plan_free',
+        name: 'نسخه پایه (رایگان)',
+        code: 'free',
+        max_devices: 1,
+        max_businesses: 1,
+        price_monthly: 0,
+        price_yearly: 0,
+        features: ['sales', 'purchases', 'inventory'],
+      },
+      {
+        id: 'plan_pro',
+        name: 'نسخه حرفه‌ای (Professional)',
+        code: 'professional',
+        max_devices: 3,
+        max_businesses: 3,
+        price_monthly: 290000,
+        price_yearly: 2900000,
+        features: ['sales', 'purchases', 'inventory', 'treasury', 'reports', 'backup'],
+      },
+      {
+        id: 'plan_ent',
+        name: 'نسخه سازمانی (Enterprise)',
+        code: 'enterprise',
+        max_devices: 10,
+        max_businesses: 10,
+        price_monthly: 790000,
+        price_yearly: 7900000,
+        features: ['sales', 'purchases', 'inventory', 'treasury', 'reports', 'backup', 'multi_user', 'audit_logs'],
+      },
+    ];
+  },
+
   // Read local cached status (Offline Cache)
   getCachedLicense(): LicenseStatus {
     const cached = localStorage.getItem(LICENSE_CACHE_KEY);

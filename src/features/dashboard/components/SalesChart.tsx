@@ -14,7 +14,7 @@ interface SalesChartProps {
   }[];
 }
 
-export function SalesChart({ data }: SalesChartProps) {
+export const SalesChart = React.memo(function SalesChart({ data }: SalesChartProps) {
   const chartData = data && data.length > 0 
     ? data.map(d => ({
         name: d.month,
@@ -92,4 +92,4 @@ export function SalesChart({ data }: SalesChartProps) {
       </CardContent>
     </Card>
   );
-}
+});

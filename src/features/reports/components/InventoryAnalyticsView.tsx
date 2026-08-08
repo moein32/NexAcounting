@@ -162,7 +162,7 @@ export function InventoryAnalyticsView({ data }: InventoryAnalyticsViewProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {data.items.map((item) => (
+                    {(data.items || []).map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                         <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
                           <div className="flex flex-col gap-0.5">

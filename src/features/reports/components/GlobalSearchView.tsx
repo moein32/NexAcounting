@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Badge } from '../../../components/ui/Badge';
 import { formatCurrency, formatPersianDate } from '../../../lib/utils';
 import { Search, User, Package, FileText, Landmark, CornerDownLeft, Loader2 } from 'lucide-react';
-import { db } from '../../../lib/sqlite';
-import { documentService } from '../../../services/documentService';
-import { partyService } from '../../../services/partyService';
-import { itemService } from '../../../services/itemService';
+import { PartyRepository, ItemRepository, DocumentRepository } from '../../../repositories';
 import { CheckRepository } from '../../../repositories/treasuryRepository';
 
 interface GlobalSearchViewProps {
@@ -40,69 +37,55 @@ export function GlobalSearchView({ businessId }: GlobalSearchViewProps) {
       const formattedQuery = val.toLowerCase().trim();
       const tempResults: SearchResultItem[] = [];
 
-      // 1. Search Parties (Customers & Suppliers)
-      const parties = (await partyService.getParties(businessId)).data || [];
-      parties.forEach(p => {
-        if (
-          p.display_name.toLowerCase().includes(formattedQuery) || 
-          p.phone?.includes(formattedQuery) ||
-          p.mobile?.includes(formattedQuery)
-        ) {
-          const isCustomer = p.roles?.includes('customer');
-          tempResults.push({
-            id: p.id,
-            title: p.display_name,
-            subtitle: p.phone || p.email || 'بدون تلفن تماس',
-            category: 'party',
-            badge: isCustomer ? 'مشتری' : 'تامین‌کننده',
-            badgeVariant: isCustomer ? 'success' : 'warning',
-            metaValue: p.mobile || undefined
-          });
-        }
+      // 1. Indexed Search Parties (Customers & Suppliers)
+      const partyMatches = PartyRepository.search(businessId, formattedQuery, 15);
+      partyMatches.forEach(p => {
+        const isCustomer = p.roles?.includes('customer');
+        tempResults.push({
+          id: p.id,
+          title: p.name,
+          subtitle: p.phone || p.email || 'بدون تلفن تماس',
+          category: 'party',
+          badge: isCustomer ? 'مشتری' : 'تامین‌کننده',
+          badgeVariant: isCustomer ? 'success' : 'warning',
+          metaValue: p.mobile || undefined
+        });
       });
 
-      // 2. Search Items (Products)
-      const items = (await itemService.getItems(businessId)).data || [];
-      items.forEach(item => {
-        if (
-          item.name.toLowerCase().includes(formattedQuery) ||
-          item.code?.toLowerCase().includes(formattedQuery)
-        ) {
-          tempResults.push({
-            id: item.id,
-            title: item.name,
-            subtitle: `کد کالا: ${item.code || 'PRD'} • قیمت فروش: ${formatCurrency(item.default_sale_price || 0, 'تومان')}`,
-            category: 'product',
-            badge: 'کالا / محصول',
-            badgeVariant: 'primary',
-            metaValue: item.purchase_price
-          });
-        }
+      // 2. Indexed Search Items (Products)
+      const itemMatches = ItemRepository.search(businessId, formattedQuery, 15);
+      itemMatches.forEach(item => {
+        tempResults.push({
+          id: item.id,
+          title: item.name,
+          subtitle: `کد کالا: ${item.code || 'PRD'} • قیمت فروش: ${formatCurrency(item.sale_price || 0, 'تومان')}`,
+          category: 'product',
+          badge: 'کالا / محصول',
+          badgeVariant: 'primary',
+          metaValue: item.purchase_price
+        });
       });
 
-      // 3. Search Documents (Invoices)
-      const docs = await documentService.getDocuments(businessId);
-      docs.forEach(doc => {
-        if (
-          doc.document_number?.toLowerCase().includes(formattedQuery) ||
-          (doc.notes && doc.notes.toLowerCase().includes(formattedQuery))
-        ) {
-          const isSales = doc.document_type === 'sales_invoice';
-          tempResults.push({
-            id: doc.id,
-            title: `${isSales ? 'فاکتور فروش' : 'فاکتور خرید'} شماره ${doc.document_number}`,
-            subtitle: `وضعیت: ${doc.payment_status === 'paid' ? 'تسویه کامل' : 'بدهکار'} • تاریخ: ${formatPersianDate(doc.document_date)}`,
-            category: 'invoice',
-            badge: isSales ? 'فاکتور فروش' : 'فاکتور خرید',
-            badgeVariant: isSales ? 'success' : 'neutral',
-            metaValue: doc.grand_total
-          });
-        }
+      // 3. Indexed Search Documents (Invoices)
+      const docMatches = DocumentRepository.search(businessId, formattedQuery, 15);
+      docMatches.forEach(doc => {
+        const isSales = doc.document_type === 'sales_invoice';
+        tempResults.push({
+          id: doc.id,
+          title: `${isSales ? 'فاکتور فروش' : 'فاکتور خرید'} شماره ${doc.document_number}`,
+          subtitle: `وضعیت: ${doc.payment_status === 'paid' ? 'تسویه کامل' : 'بدهکار'} • تاریخ: ${formatPersianDate(doc.document_date)}`,
+          category: 'invoice',
+          badge: isSales ? 'فاکتور فروش' : 'فاکتور خرید',
+          badgeVariant: isSales ? 'success' : 'neutral',
+          metaValue: doc.total_amount
+        });
       });
 
       // 4. Search Checks
       const checks = CheckRepository.getAll(businessId);
-      checks.forEach(check => {
+      let checkMatches = 0;
+      for (const check of checks) {
+        if (checkMatches >= 10) break;
         if (
           check.check_number?.toLowerCase().includes(formattedQuery) ||
           check.bank_name?.toLowerCase().includes(formattedQuery)
@@ -117,8 +100,9 @@ export function GlobalSearchView({ businessId }: GlobalSearchViewProps) {
             badgeVariant: isReceived ? 'primary' : 'danger',
             metaValue: check.amount
           });
+          checkMatches++;
         }
-      });
+      }
 
       setResults(tempResults);
     } catch (e) {

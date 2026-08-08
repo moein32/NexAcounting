@@ -127,8 +127,8 @@ export function PurchaseReportView({ data, onPrint, onExportCSV }: PurchaseRepor
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.suppliersBreakdown.length > 0 ? (
-                data.suppliersBreakdown.slice(0, 5).map((supp, index) => (
+              {(data.suppliersBreakdown || []).length > 0 ? (
+                (data.suppliersBreakdown || []).slice(0, 5).map((supp, index) => (
                   <div key={supp.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div className="flex items-center gap-2.5">
                       <span className="w-5 h-5 flex items-center justify-center font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 rounded-md">
@@ -160,8 +160,8 @@ export function PurchaseReportView({ data, onPrint, onExportCSV }: PurchaseRepor
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.productsBreakdown.length > 0 ? (
-                data.productsBreakdown.slice(0, 5).map((prod, index) => (
+              {(data.productsBreakdown || []).length > 0 ? (
+                (data.productsBreakdown || []).slice(0, 5).map((prod, index) => (
                   <div key={prod.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div className="flex items-center gap-2.5">
                       <span className="w-5 h-5 flex items-center justify-center font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md">

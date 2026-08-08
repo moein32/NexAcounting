@@ -19,7 +19,10 @@ import {
   User,
   History,
   TrendingUp,
+  Download,
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 import { PrintInvoiceModal } from '../../../components/invoice/PrintInvoiceModal';
 
@@ -54,17 +57,52 @@ export function PurchaseDetailPage() {
     }
   };
 
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const handleConfirm = async () => {
     if (!doc || !currentBusiness) return;
-    if (!window.confirm('آیا از تایید نهایی و صدور رسید انبار برای کالاهای خریداری شده اطمینان دارید؟')) return;
-
     try {
       setLoading(true);
       await documentService.confirmDocument(currentBusiness.id, doc.id, user?.id);
+      setConfirmModalOpen(false);
       await loadData();
     } catch (err: any) {
       alert(err.message || 'خطا در تایید فاکتور خرید');
       setLoading(false);
+    }
+  };
+
+  const handleDirectDownloadPDF = async () => {
+    try {
+      setIsExportingPdf(true);
+      const printableElement = document.querySelector('.printable-invoice-content') as HTMLElement;
+      if (!printableElement) {
+        setShowPrintModal(true);
+        return;
+      }
+      const canvas = await html2canvas(printableElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Purchase_${doc?.document_number || 'invoice'}.pdf`);
+    } catch (err: any) {
+      console.error('Error generating PDF:', err);
+      setShowPrintModal(true);
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -137,11 +175,17 @@ export function PurchaseDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {doc.status === 'draft' && (
             <>
-              <Button variant="primary" size="sm" icon={<Check className="w-4 h-4" />} onClick={handleConfirm} disabled={loading}>
-                تأیید و صدور رسید انبار
-              </Button>
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(true)}
+                disabled={loading}
+                className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer touch-manipulation"
+              >
+                <Check className="w-4 h-4" />
+                <span>تأیید و صدور رسید انبار</span>
+              </button>
               <Link to={`/purchases/new?edit=${doc.id}`}>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-2xl">
                   ویرایش پیش‌نویس
                 </Button>
               </Link>
@@ -155,14 +199,29 @@ export function PurchaseDetailPage() {
           )}
 
           {doc.status !== 'cancelled' && (
-            <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700" icon={<X className="w-4 h-4" />} onClick={handleCancel} disabled={loading}>
+            <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700 rounded-2xl" icon={<X className="w-4 h-4" />} onClick={handleCancel} disabled={loading}>
               ابطال فاکتور
             </Button>
           )}
 
-          <Button variant="outline" size="sm" icon={<Printer className="w-4 h-4" />} onClick={handlePrint}>
-            چاپ فاکتور رسمی
-          </Button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="px-3.5 py-2 rounded-2xl border border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer touch-manipulation"
+          >
+            <Printer className="w-4 h-4" />
+            <span>استودیو چاپ فاکتور</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDirectDownloadPDF}
+            disabled={isExportingPdf}
+            className="px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer touch-manipulation"
+          >
+            <Download className="w-4 h-4" />
+            <span>دانلود PDF</span>
+          </button>
         </div>
       </div>
 
@@ -367,6 +426,42 @@ export function PurchaseDetailPage() {
           document={doc}
           business={currentBusiness}
         />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModalOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto">
+              <Check className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                تأیید فاکتور خرید و صدور رسید انبار
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                آیا از تأیید نهایی این فاکتور خرید اطمینان دارید؟ با تأیید فاکتور، رسید ورود به انبار ثبت شده و بستانکاری تأمین‌کننده اعمال می‌گردد.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all touch-manipulation cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={loading}
+                className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all touch-manipulation cursor-pointer"
+              >
+                {loading ? 'در حال ثبت...' : 'تأیید و ثبت رسید انبار'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -24,10 +24,8 @@ const UNIT_TYPE_LABELS: Record<UnitType, string> = {
 };
 
 export function UnitsPage() {
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [units, setUnits] = useState<Unit[]>([]);
   const [isLoading, setIsLoading] = useState(true);

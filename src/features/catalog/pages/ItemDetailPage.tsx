@@ -32,10 +32,8 @@ import { ItemTypeBadge, ItemStatusBadge } from '../components/ItemTypeBadge';
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [item, setItem] = useState<Item | null>(null);
   const [isLoading, setIsLoading] = useState(true);

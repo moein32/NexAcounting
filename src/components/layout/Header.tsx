@@ -54,7 +54,7 @@ const routeTitleMap: Record<string, { title: string; parent?: { title: string; p
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toggleMobileMenu, toggleSidebarCollapse, sidebarCollapsed, theme, setTheme } = useUIStore();
+  const { toggleMobileMenu, toggleSidebarCollapse, sidebarCollapsed, theme, setTheme, setGlobalSearchOpen } = useUIStore();
   const {
     currentBusiness,
     profile,
@@ -75,8 +75,8 @@ export function Header() {
   };
 
   const businessDropdownItems = [
-    ...userMemberships.map((m) => ({
-      label: m.business.name,
+    ...(userMemberships || []).map((m) => ({
+      label: m.business?.name || 'کسب‌وکار',
       onClick: () => selectBusiness(m.business_id),
     })),
     {
@@ -150,8 +150,9 @@ export function Header() {
           </div>
         )}
 
-        {/* Global Search Button Placeholder */}
+        {/* Global Search Button */}
         <button
+          onClick={() => setGlobalSearchOpen(true)}
           className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="جستجوی سریع (Ctrl + K)"
         >

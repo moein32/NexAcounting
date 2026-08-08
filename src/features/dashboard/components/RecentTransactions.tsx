@@ -18,7 +18,7 @@ interface RecentTransactionsProps {
   }[];
 }
 
-export function RecentTransactions({ transactions }: RecentTransactionsProps) {
+export const RecentTransactions = React.memo(function RecentTransactions({ transactions }: RecentTransactionsProps) {
   const typeIcons = {
     sale: <ArrowUpRight className="w-4 h-4 text-emerald-600" />,
     receipt: <Receipt className="w-4 h-4 text-blue-600" />,
@@ -79,4 +79,4 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
       </CardContent>
     </Card>
   );
-}
+});

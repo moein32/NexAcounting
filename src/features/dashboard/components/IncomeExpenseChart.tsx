@@ -13,7 +13,7 @@ interface IncomeExpenseChartProps {
   }[];
 }
 
-export function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
+export const IncomeExpenseChart = React.memo(function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
   const chartData = data && data.length > 0 ? data : MOCK_INCOME_EXPENSE_DATA;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -67,4 +67,4 @@ export function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
       </CardContent>
     </Card>
   );
-}
+});

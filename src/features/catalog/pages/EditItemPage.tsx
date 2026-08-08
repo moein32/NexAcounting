@@ -19,10 +19,8 @@ import { ItemDuplicateWarningModal } from '../components/ItemDuplicateWarningMod
 export function EditItemPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

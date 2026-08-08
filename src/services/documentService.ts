@@ -920,14 +920,29 @@ export const documentService = {
     }
 
     if (needsInventory && inventoryDocType) {
-      if (!doc.warehouse_id) {
+      let activeWarehouseId = doc.warehouse_id;
+
+      if (!activeWarehouseId) {
+        try {
+          const warehouses = await inventoryService.getWarehouses(businessId);
+          const defaultWh = warehouses.find((w) => w.is_default) || warehouses[0];
+          if (defaultWh) {
+            activeWarehouseId = defaultWh.id;
+            doc.warehouse_id = defaultWh.id;
+            doc.warehouse_name = defaultWh.name;
+          }
+        } catch (e) {
+          console.error('Failed to auto-resolve warehouse:', e);
+        }
+      }
+
+      if (!activeWarehouseId) {
         throw new Error('جهت صدور سند انبار، مشخص نمودن انبار مبدا/مقصد الزامی است.');
       }
 
       // Filter products that require inventory tracking
       const productLines = doc.items.filter((it) => {
-        // Find inside catalog if possible, otherwise true by default (products)
-        return it.quantity > 0; // We will double-check track_inventory on actual item
+        return it.quantity > 0;
       });
 
       if (productLines.length > 0) {
@@ -944,7 +959,7 @@ export const documentService = {
           const invDoc = await inventoryService.createInventoryDocument(businessId, {
             document_number: `${inventoryDocType === 'receipt' ? 'IN' : 'OUT'}-AUTO-${doc.document_number}`,
             document_type: inventoryDocType,
-            warehouse_id: doc.warehouse_id,
+            warehouse_id: activeWarehouseId,
             description: `سند انبار خودکار فاکتور ${doc.document_number}`,
             document_date: doc.document_date,
             items: invItems,

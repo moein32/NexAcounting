@@ -95,7 +95,7 @@ export function TreasuryAnalyticsView({ data }: TreasuryAnalyticsViewProps) {
               <CardDescription>جزئیات مانده نقدی صندوق و بانک‌ها</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3.5">
-              {data.cashAccounts.map((acc) => (
+              {(data.cashAccounts || []).map((acc) => (
                 <div key={acc.id} className="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
@@ -127,9 +127,9 @@ export function TreasuryAnalyticsView({ data }: TreasuryAnalyticsViewProps) {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="h-64 w-full">
-                {data.dailyFlow.length > 0 ? (
+                {(data.dailyFlow || []).length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.dailyFlow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <BarChart data={data.dailyFlow || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                       <XAxis dataKey="date" tickFormatter={(v) => formatPersianDate(v).slice(5)} tick={{ fontSize: 10, fill: '#64748b' }} />
                       <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} tick={{ fontSize: 10, fill: '#64748b' }} />
@@ -162,8 +162,8 @@ export function TreasuryAnalyticsView({ data }: TreasuryAnalyticsViewProps) {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.pendingChecksReceived.length > 0 ? (
-                data.pendingChecksReceived.map((check) => (
+              {(data.pendingChecksReceived || []).length > 0 ? (
+                (data.pendingChecksReceived || []).map((check) => (
                   <div key={check.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div>
                       <p className="font-bold text-slate-900 dark:text-slate-100">چک شماره {check.check_number}</p>
@@ -193,8 +193,8 @@ export function TreasuryAnalyticsView({ data }: TreasuryAnalyticsViewProps) {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.pendingChecksIssued.length > 0 ? (
-                data.pendingChecksIssued.map((check) => (
+              {(data.pendingChecksIssued || []).length > 0 ? (
+                (data.pendingChecksIssued || []).map((check) => (
                   <div key={check.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div>
                       <p className="font-bold text-slate-900 dark:text-slate-100">چک شماره {check.check_number}</p>

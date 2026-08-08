@@ -1,5 +1,6 @@
 import { db } from '../lib/sqlite';
 import { AccountingEngine } from '../services/accountingEngine';
+import { JournalRepository } from './accountingRepository';
 
 
 // Define TS Interfaces for Treasury Entities
@@ -277,6 +278,19 @@ export const ReceiptRepository = {
         if (matchingTx) {
           db.deleteRecord('treasury_transactions', matchingTx.id);
         }
+
+        // Reverse related accounting journal entries
+        try {
+          const entries = JournalRepository.getEntries(receipt.business_id);
+          const related = entries.filter(
+            (e) => e.reference_type === 'receipt' && e.reference_id === id && e.status !== 'reversed'
+          );
+          for (const ent of related) {
+            AccountingEngine.reverseEntry(ent.id, receipt.business_id);
+          }
+        } catch (jeErr) {
+          console.error('Failed to reverse accounting entry for receipt deletion:', jeErr);
+        }
       }
       const deleted = db.deleteRecord('receipts', id);
       db.commit();
@@ -369,6 +383,19 @@ export const PaymentRepository = {
         );
         if (matchingTx) {
           db.deleteRecord('treasury_transactions', matchingTx.id);
+        }
+
+        // Reverse related accounting journal entries
+        try {
+          const entries = JournalRepository.getEntries(payment.business_id);
+          const related = entries.filter(
+            (e) => e.reference_type === 'payment' && e.reference_id === id && e.status !== 'reversed'
+          );
+          for (const ent of related) {
+            AccountingEngine.reverseEntry(ent.id, payment.business_id);
+          }
+        } catch (jeErr) {
+          console.error('Failed to reverse accounting entry for payment deletion:', jeErr);
         }
       }
       const deleted = db.deleteRecord('payments', id);

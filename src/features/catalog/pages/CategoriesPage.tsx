@@ -15,10 +15,8 @@ import { showToast } from '../../../components/ui/Toast';
 import { ItemCategoryTree } from '../components/ItemCategoryTree';
 
 export function CategoriesPage() {
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [categories, setCategories] = useState<ItemCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);

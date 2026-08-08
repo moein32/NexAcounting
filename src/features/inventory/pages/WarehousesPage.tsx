@@ -169,6 +169,22 @@ export function WarehousesPage() {
     }
   };
 
+  const handleDeleteWh = async (e: React.MouseEvent, wh: Warehouse) => {
+    e.stopPropagation();
+    if (!window.confirm(`آیا از حذف انبار "${wh.name}" اطمینان دارید؟`)) return;
+    setErrorMsg('');
+    try {
+      await inventoryService.deleteWarehouse(businessId, wh.id, currentUserId);
+      setSuccessMsg('انبار با موفقیت حذف شد.');
+      if (selectedWh?.id === wh.id) {
+        setSelectedWh(null);
+      }
+      loadData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'خطا در حذف انبار');
+    }
+  };
+
   const saveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedWh) return;
@@ -366,17 +382,29 @@ export function WarehousesPage() {
                         </span>
                         <h4 className="font-bold text-sm mt-1.5">{w.name}</h4>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openWhModal(w);
-                        }}
-                        className={`p-1 rounded-lg hover:bg-white/10 transition-colors ${
-                          isSelected ? 'text-white' : 'text-gray-500 hover:text-gray-800'
-                        }`}
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWhModal(w);
+                          }}
+                          className={`p-1 rounded-lg hover:bg-white/10 transition-colors ${
+                            isSelected ? 'text-white' : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                          title="ویرایش انبار"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteWh(e, w)}
+                          className={`p-1 rounded-lg hover:bg-rose-500/20 transition-colors ${
+                            isSelected ? 'text-rose-300 hover:text-rose-100' : 'text-rose-500 hover:text-rose-700'
+                          }`}
+                          title="حذف انبار"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <p className={`text-xs mt-2 line-clamp-2 leading-relaxed ${

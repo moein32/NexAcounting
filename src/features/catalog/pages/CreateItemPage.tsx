@@ -30,10 +30,8 @@ import { ItemDuplicateWarningModal } from '../components/ItemDuplicateWarningMod
 
 export function CreateItemPage() {
   const navigate = useNavigate();
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);

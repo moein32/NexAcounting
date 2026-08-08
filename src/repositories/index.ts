@@ -56,6 +56,11 @@ export interface Warehouse {
   name: string;
   code: string;
   is_active: boolean;
+  is_default?: boolean;
+  description?: string | null;
+  address?: string | null;
+  manager_name?: string | null;
+  phone?: string | null;
   created_at?: string;
 }
 
@@ -156,6 +161,33 @@ export const PartyRepository = {
     return db.queryById<Party>('parties', id);
   },
 
+  search(businessId: string, query: string, limit: number = 20): Party[] {
+    return db.searchRecords<Party>('parties', businessId, ['name', 'code', 'phone', 'mobile', 'economic_code', 'national_id'], query, limit);
+  },
+
+  getPaginated(
+    businessId: string,
+    options?: { page?: number; limit?: number; role?: string; search?: string }
+  ) {
+    return db.queryPaginated<Party>('parties', businessId, {
+      page: options?.page,
+      limit: options?.limit,
+      filterFn: (p) => {
+        if (options?.role && !p.roles?.includes(options.role)) return false;
+        if (options?.search) {
+          const q = options.search.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(q) ||
+            p.code.toLowerCase().includes(q) ||
+            (p.mobile && p.mobile.includes(q))
+          );
+        }
+        return true;
+      },
+      sortFn: (a, b) => (b.created_at || '').localeCompare(a.created_at || ''),
+    });
+  },
+
   create(party: Omit<Party, 'id'> & { id?: string }): Party {
     return db.insertRecord<Party>('parties', party);
   },
@@ -177,6 +209,34 @@ export const ItemRepository = {
 
   getById(id: string): Item | null {
     return db.queryById<Item>('items', id);
+  },
+
+  search(businessId: string, query: string, limit: number = 20): Item[] {
+    return db.searchRecords<Item>('items', businessId, ['name', 'code', 'barcode'], query, limit);
+  },
+
+  getPaginated(
+    businessId: string,
+    options?: { page?: number; limit?: number; type?: 'product' | 'service'; categoryId?: string; search?: string }
+  ) {
+    return db.queryPaginated<Item>('items', businessId, {
+      page: options?.page,
+      limit: options?.limit,
+      filterFn: (i) => {
+        if (options?.type && i.type !== options.type) return false;
+        if (options?.categoryId && i.category_id !== options.categoryId) return false;
+        if (options?.search) {
+          const q = options.search.toLowerCase();
+          return (
+            i.name.toLowerCase().includes(q) ||
+            i.code.toLowerCase().includes(q) ||
+            (i.barcode && i.barcode.includes(q))
+          );
+        }
+        return true;
+      },
+      sortFn: (a, b) => (b.created_at || '').localeCompare(a.created_at || ''),
+    });
   },
 
   create(item: Omit<Item, 'id'> & { id?: string }): Item {
@@ -229,6 +289,33 @@ export const InventoryRepository = {
 
   createWarehouse(wh: Omit<Warehouse, 'id'> & { id?: string }): Warehouse {
     return db.insertRecord<Warehouse>('warehouses', wh);
+  },
+
+  deleteWarehouse(businessId: string, id: string): boolean {
+    const wh = db.queryById<Warehouse>('warehouses', id);
+    if (!wh) throw new Error('انبار یافت نشد.');
+    if (wh.is_default) {
+      throw new Error('امکان حذف انبار پیش‌فرض سیستم وجود ندارد.');
+    }
+
+    // Check for historical sales/purchase/inventory documents referencing this warehouse
+    const docs = db.queryByBusiness<any>('documents', businessId);
+    if (docs.some((d: any) => d.warehouse_id === id)) {
+      throw new Error('امکان حذف این انبار وجود ندارد زیرا دارای اسناد مالی ثبت شده است.');
+    }
+    const invDocs = db.queryByBusiness<any>('inventory_documents', businessId);
+    if (invDocs.some((d: any) => d.warehouse_id === id || d.target_warehouse_id === id)) {
+      throw new Error('امکان حذف این انبار وجود ندارد زیرا دارای اسناد انبارداری تاریخی است.');
+    }
+
+    // Check for non-zero stock
+    const layers = db.queryByBusiness<any>('inventory_cost_layers', businessId);
+    if (layers.some((l: any) => l.warehouse_id === id && l.remaining_quantity > 0)) {
+      throw new Error('امکان حذف این انبار وجود ندارد زیرا دارای موجودی کالا است.');
+    }
+
+    db.deleteRecord('warehouses', id);
+    return true;
   },
 
   getBalances(): InventoryBalance[] {
@@ -312,9 +399,49 @@ export const DocumentRepository = {
     return db.queryById<Document>('documents', id);
   },
 
+  getByType(businessId: string, documentType: string): Document[] {
+    return db.queryByIndex<Document>('documents', 'business_id:document_type', `${businessId}:${documentType}`);
+  },
+
+  search(businessId: string, query: string, limit: number = 20): Document[] {
+    return db.searchRecords<Document>('documents', businessId, ['document_number', 'notes'], query, limit);
+  },
+
+  getPaginated(
+    businessId: string,
+    options?: { page?: number; limit?: number; documentType?: string; status?: string; partyId?: string; search?: string }
+  ) {
+    let indexKey: string | undefined;
+    let indexVal: string | undefined;
+
+    if (options?.documentType) {
+      indexKey = 'business_id:document_type';
+      indexVal = `${businessId}:${options.documentType}`;
+    }
+
+    return db.queryPaginated<Document>('documents', businessId, {
+      page: options?.page,
+      limit: options?.limit,
+      indexKey,
+      indexVal,
+      filterFn: (d) => {
+        if (options?.status && d.status !== options.status) return false;
+        if (options?.partyId && d.party_id !== options.partyId) return false;
+        if (options?.search) {
+          const q = options.search.toLowerCase();
+          return (
+            d.document_number.toLowerCase().includes(q) ||
+            (d.notes && d.notes.toLowerCase().includes(q))
+          );
+        }
+        return true;
+      },
+      sortFn: (a, b) => (b.document_date || '').localeCompare(a.document_date || ''),
+    });
+  },
+
   getItems(documentId: string): DocumentItem[] {
-    const all = db.queryAll<DocumentItem>('document_items');
-    let items = all.filter((item) => item.document_id === documentId);
+    let items = db.queryByIndex<DocumentItem>('document_items', 'document_id', documentId);
     
     // Fallback to localStorage if SQLite returned empty
     if (items.length === 0) {
@@ -385,6 +512,12 @@ export const DocumentRepository = {
     try {
       const doc = this.getById(id);
       if (!doc) throw new Error('سند یافت نشد.');
+
+      // Confirmation Guard: If document is already in requested status, return without duplicate side effects
+      if (doc.status === status) {
+        db.commit();
+        return doc;
+      }
 
       const updated = db.updateRecord<Document>('documents', id, { status });
 
@@ -474,27 +607,51 @@ export const SettingsRepository = {
 export const BackupRepository = {
   exportBackup(): string {
     const state = db.getState(); // Extract full SQLite relational state (all tables)
+    const serializedState = JSON.stringify(state);
     const backupObj = {
       database: state,
       settings: db.queryAll<any>('settings'),
       metadata: {
         version: 'v2.5',
         timestamp: new Date().toISOString(),
-        checksum: this.calculateChecksum(JSON.stringify(state)),
+        checksum: this.calculateChecksum(serializedState),
       },
       encrypted: true,
     };
 
-    // Compress & encrypt simulation via Base64 conversion + simple AES architectural layer
     const serialized = JSON.stringify(backupObj);
-    return btoa(unescape(encodeURIComponent(serialized))); // Simulated Encryption payload
+    
+    // Chunked safe Base64 encoding for large datasets
+    try {
+      const codeUnits = new Uint8Array(new TextEncoder().encode(serialized));
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < codeUnits.length; i += chunkSize) {
+        const chunk = codeUnits.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, chunk as any);
+      }
+      return btoa(binary);
+    } catch {
+      return btoa(unescape(encodeURIComponent(serialized)));
+    }
   },
 
   importBackup(backupString: string): boolean {
     db.beginTransaction();
     try {
-      const decoded = decodeURIComponent(escape(atob(backupString)));
-      const parsed = JSON.parse(decoded);
+      let serialized = '';
+      try {
+        const binary = atob(backupString);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        serialized = new TextDecoder().decode(bytes);
+      } catch {
+        serialized = decodeURIComponent(escape(atob(backupString)));
+      }
+
+      const parsed = JSON.parse(serialized);
 
       if (parsed.metadata && parsed.metadata.version) {
         let stateToRestore = parsed.database;
@@ -506,12 +663,12 @@ export const BackupRepository = {
           'settings', 'licenses', 'audit_logs', 'cash_accounts', 'payment_methods',
           'treasury_transactions', 'receipts', 'payments', 'checks',
           'accounts', 'accounting_periods', 'journal_entries', 'journal_lines',
-          'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs'
+          'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs',
+          'notifications', 'notification_preferences', 'inventory_documents', 'inventory_document_items'
         ];
         
         // Ensure stateToRestore is structured as a complete DBState object
         if (Array.isArray(stateToRestore)) {
-          // If the older version stored only the businesses array in stateToRestore, convert it
           const originalState = stateToRestore;
           stateToRestore = {
             businesses: originalState,

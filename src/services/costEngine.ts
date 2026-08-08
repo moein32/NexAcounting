@@ -410,16 +410,23 @@ export const CostEngine = {
       this.reverseCOGSJournal(businessId, doc.id);
 
     } else if (doc.document_type === 'purchase_invoice') {
-      // Find cost layers created by this purchase invoice and delete/deactivate them
-      const docItems = db.queryAll<any>('document_items').filter(di => di.document_id === doc.id);
-      const docItemIds = docItems.map(di => di.id);
+      // Find cost layers created by this purchase invoice
+      const itemsList = doc.items || db.queryAll<any>('document_items').filter(di => di.document_id === doc.id);
+      const docItemIds = itemsList.map((di: any) => di.id).filter(Boolean);
 
       const allLayers = db.queryAll<CostLayer>('inventory_cost_layers');
-      const layersToDelete = allLayers.filter(l => docItemIds.includes(l.document_item_id));
+      const layersToDelete = allLayers.filter(
+        l => docItemIds.includes(l.document_item_id) || l.document_item_id === doc.id
+      );
+
+      // COST ENGINE SAFETY GUARD: Block purchase cancellation if inventory layers were consumed by sales
+      for (const layer of layersToDelete) {
+        if (layer.quantity - layer.remaining_quantity > 0) {
+          throw new Error('امکان لغو این خرید وجود ندارد، زیرا بخشی از موجودی آن در فروشهای بعدی مصرف شده است.');
+        }
+      }
 
       layersToDelete.forEach(l => {
-        // If they were already consumed by sales, we might need to adjust remaining or handle warning
-        // In simple reversal, we set remaining_quantity = 0 or delete
         db.deleteRecord('inventory_cost_layers', l.id);
       });
     }

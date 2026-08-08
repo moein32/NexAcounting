@@ -11,7 +11,9 @@ interface MobileNavigationProps {
 }
 
 export const MobileNavigation: React.FC<MobileNavigationProps> = ({ onOpenSearch }) => {
-  const { mobileMenuOpen, setMobileMenuOpen } = useUIStore();
+  const { mobileMenuOpen, setMobileMenuOpen, setGlobalSearchOpen } = useUIStore();
+
+  const handleSearch = onOpenSearch || (() => setGlobalSearchOpen(true));
 
   // Android hardware back button handler
   useAndroidBackButton(() => {
@@ -24,7 +26,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({ onOpenSearch
 
   return (
     <>
-      <MobileHeader onOpenSearch={onOpenSearch} />
+      <MobileHeader onOpenSearch={handleSearch} />
       <MobileDrawer />
       <FloatingActionButton />
       <BottomNavigation />

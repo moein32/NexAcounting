@@ -29,6 +29,7 @@ export interface Warehouse {
   manager_name: string | null;
   phone: string | null;
   is_active: boolean;
+  is_default?: boolean;
   created_at: string;
   updated_at: string;
   // Derived fields

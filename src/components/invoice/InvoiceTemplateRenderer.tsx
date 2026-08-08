@@ -59,6 +59,13 @@ export const InvoiceTemplateRenderer: React.FC<InvoiceTemplateRendererProps> = (
       paddingRight: `${marginRight}mm`,
     };
 
+    const isLandscape =
+      settings.orientation === 'landscape' ||
+      pageSize === 'A4_landscape' ||
+      pageSize === 'A5_landscape' ||
+      templateId === 'official_landscape' ||
+      templateId === 'modern_landscape';
+
     if (pageSize === 'thermal') {
       return {
         ...baseMargin,
@@ -68,19 +75,19 @@ export const InvoiceTemplateRenderer: React.FC<InvoiceTemplateRendererProps> = (
       };
     }
 
-    if (pageSize === 'A5') {
+    if (pageSize === 'A5' || pageSize === 'A5_landscape') {
       return {
         ...baseMargin,
-        width: '148mm',
-        minHeight: '210mm',
+        width: isLandscape ? '210mm' : '148mm',
+        minHeight: isLandscape ? '148mm' : '210mm',
       };
     }
 
-    // Default A4
+    // Default A4 (Portrait or Landscape)
     return {
       ...baseMargin,
-      width: '210mm',
-      minHeight: '297mm',
+      width: isLandscape ? '297mm' : '210mm',
+      minHeight: isLandscape ? '210mm' : '297mm',
     };
   };
 
@@ -406,6 +413,239 @@ export const InvoiceTemplateRenderer: React.FC<InvoiceTemplateRendererProps> = (
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- 2.5 OFFICIAL LANDSCAPE (HORIZONTAL) TEMPLATE ---
+  if (templateId === 'official_landscape') {
+    return (
+      <div
+        className={`printable-invoice-content bg-white text-slate-900 font-sans dir-rtl mx-auto select-text ${getFontSizeClass()} ${className}`}
+        style={getPageContainerStyle()}
+      >
+        <div className="border-2 border-slate-900 p-4 space-y-3">
+          {/* Header */}
+          <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3">
+            <div className="flex items-center gap-3 w-1/4">
+              {showLogo && business?.logo_url ? (
+                <img src={business.logo_url} alt="Logo" className="h-12 max-w-[140px] object-contain" />
+              ) : (
+                <div className="font-black text-base text-slate-900">{business?.name}</div>
+              )}
+            </div>
+
+            <div className="text-center flex-1">
+              <h1 className="text-xl font-black text-slate-900 tracking-wide">{title} (حالت افقی)</h1>
+              <p className="text-xs text-slate-700 font-bold mt-1">{business?.name}</p>
+            </div>
+
+            <div className="text-left w-1/4 space-y-1 text-xs font-semibold">
+              <div className="flex justify-between">
+                <span className="text-slate-600">شماره:</span>
+                <span className="font-bold">{doc.document_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">تاریخ:</span>
+                <span>{formatPersianDate(doc.document_date)}</span>
+              </div>
+              {doc.due_date && (
+                <div className="flex justify-between text-rose-700">
+                  <span>سررسید:</span>
+                  <span>{formatPersianDate(doc.due_date)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Seller & Buyer Side-by-Side Boxes */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-slate-900 rounded-sm">
+              <div className="bg-slate-100 border-b border-slate-900 px-2 py-1 font-bold text-slate-900 text-[11px]">
+                مشخصات فروشنده
+              </div>
+              <div className="p-2 space-y-1 text-[11px]">
+                <p><span className="font-bold text-slate-700">نام: </span><span className="font-bold">{business?.name || '---'}</span></p>
+                {showEconomicDetails && (
+                  <p><span className="text-slate-600">کد اقتصادی: </span><span>{business?.economic_code || '---'}</span> • <span className="text-slate-600">شناسه ملی: </span><span>{business?.national_id || '---'}</span></p>
+                )}
+                <p><span className="text-slate-600">آدرس و تلفن: </span><span>{business?.address || '---'} ({business?.phone || '---'})</span></p>
+              </div>
+            </div>
+
+            <div className="border border-slate-900 rounded-sm">
+              <div className="bg-slate-100 border-b border-slate-900 px-2 py-1 font-bold text-slate-900 text-[11px] flex justify-between">
+                <span>مشخصات خریدار</span>
+                {showWarehouse && doc.warehouse_name && <span>انبار: {doc.warehouse_name}</span>}
+              </div>
+              <div className="p-2 space-y-1 text-[11px]">
+                <p><span className="font-bold text-slate-700">نام خریدار: </span><span className="font-bold">{doc.party_display_name || 'مشتری عمومی'}</span></p>
+                <p><span className="text-slate-600">اطلاعات پرونده: </span><span>ثبت شده در سیستم حسابداری</span></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="border border-slate-900 overflow-hidden">
+            <table className="w-full text-right border-collapse text-[11px]">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-900 font-bold text-slate-900">
+                  <th className="py-1.5 px-2 text-center border-l border-slate-900 w-10">ردیف</th>
+                  <th className="py-1.5 px-2 text-center border-l border-slate-900 w-24">کد کالا</th>
+                  <th className="py-1.5 px-2 border-l border-slate-900">شرح کامل کالا یا خدمات</th>
+                  <th className="py-1.5 px-2 text-center border-l border-slate-900 w-16">تعداد</th>
+                  <th className="py-1.5 px-2 text-center border-l border-slate-900 w-16">واحد</th>
+                  <th className="py-1.5 px-2 text-left border-l border-slate-900 w-28">قیمت واحد ({doc.currency})</th>
+                  {showDiscount && <th className="py-1.5 px-2 text-left border-l border-slate-900 w-24">تخفیف</th>}
+                  {showTax && <th className="py-1.5 px-2 text-left border-l border-slate-900 w-24">مالیات</th>}
+                  <th className="py-1.5 px-2 text-left w-32">مبلغ کل ({doc.currency})</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-400">
+                {doc.items?.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50">
+                    <td className="py-1.5 px-2 text-center border-l border-slate-400 font-bold">{idx + 1}</td>
+                    <td className="py-1.5 px-2 text-center border-l border-slate-400 font-mono text-[10px]">{item.item_code || '---'}</td>
+                    <td className="py-1.5 px-2 border-l border-slate-400 font-bold text-slate-900">
+                      {item.item_name}
+                      {item.description && <span className="text-[10px] text-slate-500 block">{item.description}</span>}
+                    </td>
+                    <td className="py-1.5 px-2 text-center border-l border-slate-400 font-bold">{item.quantity}</td>
+                    <td className="py-1.5 px-2 text-center border-l border-slate-400 text-slate-700">{item.unit_name || 'عدد'}</td>
+                    <td className="py-1.5 px-2 text-left border-l border-slate-400 font-mono">{formatCurrency(item.unit_price)}</td>
+                    {showDiscount && <td className="py-1.5 px-2 text-left border-l border-slate-400 font-mono text-slate-700">{formatCurrency(item.discount_amount)}</td>}
+                    {showTax && <td className="py-1.5 px-2 text-left border-l border-slate-400 font-mono text-slate-700">{formatCurrency(item.tax_amount)}</td>}
+                    <td className="py-1.5 px-2 text-left font-black font-mono">{formatCurrency(item.line_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bottom Grid: Words, Totals, Signatures */}
+          <div className="grid grid-cols-12 gap-3 border border-slate-900 p-2 text-[11px]">
+            <div className="col-span-5 space-y-2">
+              <div>
+                <span className="font-bold text-slate-800">مبلغ به حروف: </span>
+                <span className="font-bold text-slate-900">{grandTotalWords} {doc.currency}</span>
+              </div>
+              {showNotes && doc.notes && (
+                <div className="pt-1.5 border-t border-slate-300 text-slate-700">
+                  <span className="font-bold">توضیحات: </span>
+                  <span>{doc.notes}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="col-span-4 border-r border-slate-400 pr-3 space-y-1">
+              <div className="flex justify-between"><span className="text-slate-600">جمع کل:</span><span className="font-mono">{formatCurrency(doc.subtotal)}</span></div>
+              {showDiscount && doc.discount_total > 0 && <div className="flex justify-between"><span>تخفیف:</span><span className="font-mono">{formatCurrency(doc.discount_total)} -</span></div>}
+              {showTax && doc.tax_total > 0 && <div className="flex justify-between"><span>مالیات:</span><span className="font-mono">{formatCurrency(doc.tax_total)} +</span></div>}
+              <div className="flex justify-between font-black text-sm border-t border-slate-900 pt-1 text-slate-900">
+                <span>قابل پرداخت:</span>
+                <span className="font-mono">{formatCurrency(doc.grand_total)} {doc.currency}</span>
+              </div>
+            </div>
+
+            {showSignatures && (
+              <div className="col-span-3 border-r border-slate-400 pr-3 flex flex-col justify-between text-center text-[10px] h-20">
+                <p className="font-bold">مهر و امضای صادرکننده / خریدار</p>
+                <p className="text-slate-400">NexAccounting</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 2.8 MODERN LANDSCAPE (HORIZONTAL) TEMPLATE ---
+  if (templateId === 'modern_landscape') {
+    return (
+      <div
+        className={`printable-invoice-content bg-white text-slate-900 font-sans dir-rtl mx-auto select-text ${getFontSizeClass()} ${className}`}
+        style={getPageContainerStyle()}
+      >
+        <div className="space-y-3">
+          {/* Top Banner */}
+          <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
+            <div className="flex items-center gap-3">
+              {showLogo && business?.logo_url && <img src={business.logo_url} alt="Logo" className="h-10 w-auto" />}
+              <div>
+                <h1 className="text-lg font-black">{business?.name || 'مجموعه تجاری'}</h1>
+                <p className="text-[10px] text-slate-400">{business?.address || 'فروشگاه افقی مدرن'}</p>
+              </div>
+            </div>
+
+            <div className="text-left space-y-0.5">
+              <span className="inline-block bg-indigo-500 text-white font-black text-xs px-3 py-1 rounded-full">
+                {title} (افقی)
+              </span>
+              <p className="text-xs font-semibold text-slate-300 mt-1">شماره: {doc.document_number}</p>
+              <p className="text-[11px] text-slate-400">تاریخ: {formatPersianDate(doc.document_date)}</p>
+            </div>
+          </div>
+
+          {/* Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-400 block mb-0.5">مشخصات خریدار</span>
+              <p className="font-bold text-xs text-slate-900">{doc.party_display_name || 'مشتری'}</p>
+              {showWarehouse && doc.warehouse_name && <p className="text-[10px] text-slate-500 mt-0.5">انبار: {doc.warehouse_name}</p>}
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-left">
+              <span className="text-[10px] font-bold text-slate-400 block mb-0.5">اطلاعات فروشگاه</span>
+              <p className="text-xs font-semibold text-slate-800">تلفن: {business?.phone || '---'}</p>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-right text-xs">
+              <thead>
+                <tr className="bg-slate-800 text-white font-bold">
+                  <th className="py-2 px-2 text-center w-8">#</th>
+                  <th className="py-2 px-2">شرح کالا</th>
+                  <th className="py-2 px-2 text-center w-16">تعداد</th>
+                  <th className="py-2 px-2 text-left w-24">قیمت واحد</th>
+                  {showDiscount && <th className="py-2 px-2 text-left w-20">تخفیف</th>}
+                  {showTax && <th className="py-2 px-2 text-left w-20">مالیات</th>}
+                  <th className="py-2 px-2 text-left w-28">مبلغ کل</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {doc.items?.map((item, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                    <td className="py-2 px-2 text-center text-slate-400 font-bold">{idx + 1}</td>
+                    <td className="py-2 px-2 font-bold text-slate-900">{item.item_name}</td>
+                    <td className="py-2 px-2 text-center font-bold">{item.quantity} {item.unit_name}</td>
+                    <td className="py-2 px-2 text-left font-mono">{formatCurrency(item.unit_price)}</td>
+                    {showDiscount && <td className="py-2 px-2 text-left font-mono text-emerald-600">{formatCurrency(item.discount_amount)}</td>}
+                    {showTax && <td className="py-2 px-2 text-left font-mono text-slate-500">{formatCurrency(item.tax_amount)}</td>}
+                    <td className="py-2 px-2 text-left font-black font-mono">{formatCurrency(item.line_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Summary */}
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1 bg-indigo-50 text-indigo-900 p-3 rounded-xl border border-indigo-100">
+              <span className="text-xs font-bold block">مبلغ به حروف: {grandTotalWords} {doc.currency}</span>
+              {showNotes && doc.notes && <p className="text-xs mt-1 text-slate-600">{doc.notes}</p>}
+            </div>
+
+            <div className="w-72 bg-slate-900 text-white p-3 rounded-xl space-y-1 text-xs">
+              <div className="flex justify-between text-slate-300"><span>جمع کل:</span><span>{formatCurrency(doc.subtotal)}</span></div>
+              {showDiscount && doc.discount_total > 0 && <div className="flex justify-between text-emerald-400"><span>تخفیف:</span><span>{formatCurrency(doc.discount_total)} -</span></div>}
+              <div className="flex justify-between font-black text-sm border-t border-slate-700 pt-1 text-white">
+                <span>مبلغ قابل پرداخت:</span>
+                <span>{formatCurrency(doc.grand_total)} {doc.currency}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

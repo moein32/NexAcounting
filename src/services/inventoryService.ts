@@ -137,18 +137,24 @@ const INITIAL_TRANSACTIONS: InventoryTransaction[] = [
 ];
 
 // LocalStorage helpers
+import { db } from '../lib/sqlite';
+import { InventoryRepository, ItemRepository } from '../repositories';
+
 function getDemoItems(businessId: string): any[] {
   try {
-    const raw = localStorage.getItem('nex_demo_items_data');
-    if (!raw) return [];
-    return JSON.parse(raw).filter((i: any) => i.business_id === businessId);
+    const dbItems = ItemRepository.getAll(businessId);
+    if (dbItems && dbItems.length > 0) {
+      return dbItems;
+    }
+    const raw = localStorage.getItem('nex_items_data') || localStorage.getItem('nex_demo_items_data');
+    if (raw) {
+      return JSON.parse(raw).filter((i: any) => i.business_id === businessId || !i.business_id);
+    }
+    return [];
   } catch {
     return [];
   }
 }
-
-import { db } from '../lib/sqlite';
-import { InventoryRepository } from '../repositories';
 
 function getFromStorage<T>(key: string, initial: T[]): T[] {
   try {
@@ -502,6 +508,49 @@ export const inventoryService = {
   ): Promise<boolean> {
     await this.updateWarehouse(businessId, id, { is_active: false }, currentUserId);
     return true;
+  },
+
+  async deleteWarehouse(
+    businessId: string,
+    id: string,
+    currentUserId?: string
+  ): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return InventoryRepository.deleteWarehouse(businessId, id);
+    }
+    try {
+      const wh = await supabase.from('warehouses').select('*').eq('id', id).single();
+      if (!wh.data) throw new Error('انبار یافت نشد');
+      if (wh.data.is_default) throw new Error('امکان حذف انبار پیش‌فرض سیستم وجود ندارد.');
+
+      const { data: docs } = await supabase.from('documents').select('id').eq('warehouse_id', id).limit(1);
+      if (docs && docs.length > 0) {
+        throw new Error('امکان حذف این انبار وجود ندارد زیرا دارای اسناد مالی ثبت شده است.');
+      }
+
+      const { data: invDocs } = await supabase.from('inventory_documents').select('id').or(`warehouse_id.eq.${id},target_warehouse_id.eq.${id}`).limit(1);
+      if (invDocs && invDocs.length > 0) {
+        throw new Error('امکان حذف این انبار وجود ندارد زیرا دارای اسناد انبارداری تاریخی است.');
+      }
+
+      const { error } = await supabase.from('warehouses').delete().eq('id', id).eq('business_id', businessId);
+      if (error) throw error;
+
+      if (currentUserId) {
+        await authService.logAuditAction({
+          businessId,
+          userId: currentUserId,
+          action: 'DELETE_WAREHOUSE',
+          entityType: 'warehouses',
+          entityId: id,
+        });
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting warehouse:', err);
+      throw new Error(err.message || 'خطا در حذف انبار');
+    }
   },
 
   // --- LOCATIONS ---
@@ -1080,14 +1129,15 @@ export const inventoryService = {
           );
           const currentQty = currentBal ? currentBal.quantity : 0;
           if (currentQty < itemRow.quantity) {
-            const catItem = catalogItems.find(ci => ci.id === itemRow.item_id);
+            const catItem = catalogItems.find(ci => ci.id === itemRow.item_id) || ItemRepository.getById(itemRow.item_id);
+            const itemName = catItem?.name || catItem?.title || 'کالای منتخب';
             if (policy === 'block') {
               throw new Error(
-                `خروج موجودی منفی مسدود شده است! موجودی کالای "${catItem?.name || 'نامشخص'}" کافی نیست (موجودی فعلی: ${currentQty}، درخواستی: ${itemRow.quantity})`
+                `خروج موجودی منفی مسدود شده است! موجودی کالای "${itemName}" در انبار کافی نیست (موجودی فعلی: ${currentQty}، درخواستی: ${itemRow.quantity}). لطفاً ابتدا رسید ورود به انبار (خرید یا موجودی اولیه) ثبت کنید یا از بخش تنظیمات > تنظیمات انبار، اجازه موجودی منفی را فعال نمایید.`
               );
             } else if (policy === 'warn') {
               console.warn(
-                `هشدار موجودی منفی: موجودی کالای "${catItem?.name || 'نامشخص'}" کافی نیست (موجودی: ${currentQty}، درخواستی: ${itemRow.quantity})`
+                `هشدار موجودی منفی: موجودی کالای "${itemName}" کافی نیست (موجودی: ${currentQty}، درخواستی: ${itemRow.quantity})`
               );
             }
           }

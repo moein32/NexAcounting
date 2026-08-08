@@ -13,10 +13,8 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { showToast } from '../../../components/ui/Toast';
 
 export function PriceListsPage() {
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [isLoading, setIsLoading] = useState(true);

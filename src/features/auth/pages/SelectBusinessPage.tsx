@@ -169,7 +169,7 @@ export function SelectBusinessPage() {
             ) : (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-3">
-                  {userMemberships.map((membership) => {
+                  {(userMemberships || []).map((membership) => {
                     const biz = membership.business;
                     const isCurrent = currentBusiness?.id === biz.id;
 

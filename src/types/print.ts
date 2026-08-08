@@ -1,10 +1,12 @@
-export type PageSize = 'A4' | 'A5' | 'thermal';
-export type InvoiceTemplateId = 'official' | 'simple' | 'modern' | 'compact';
+export type PageSize = 'A4' | 'A5' | 'A4_landscape' | 'A5_landscape' | 'thermal';
+export type InvoiceTemplateId = 'official' | 'official_landscape' | 'simple' | 'modern' | 'modern_landscape' | 'compact';
 export type InvoiceFontSize = 'small' | 'medium' | 'large';
+export type PageOrientation = 'portrait' | 'landscape';
 
 export interface PrintSettings {
   pageSize: PageSize;
   templateId: InvoiceTemplateId;
+  orientation: PageOrientation;
   marginTop: number; // in mm
   marginBottom: number;
   marginLeft: number;
@@ -25,6 +27,7 @@ export interface PrintSettings {
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   pageSize: 'A4',
   templateId: 'official',
+  orientation: 'portrait',
   marginTop: 10,
   marginBottom: 10,
   marginLeft: 10,

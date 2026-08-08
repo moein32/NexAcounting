@@ -18,7 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'treasury', title: 'مالی', path: '/treasury', icon: Landmark },
 ];
 
-export const FloatingNavigationBar: React.FC = () => {
+export const FloatingNavigationBar: React.FC = React.memo(() => {
   const location = useLocation();
 
   return (
@@ -59,4 +59,4 @@ export const FloatingNavigationBar: React.FC = () => {
       </nav>
     </div>
   );
-};
+});

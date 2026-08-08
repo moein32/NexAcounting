@@ -46,6 +46,8 @@ export interface DBState {
   inventory_revaluation_logs: any[];
   notifications: any[];
   notification_preferences: any[];
+  inventory_documents: any[];
+  inventory_document_items: any[];
 }
 
 const STORAGE_KEY = 'nex_sqlite_db_state';
@@ -57,7 +59,7 @@ class SqliteDatabaseEngine {
   private transactionDepth = 0;
   private transactionBackup: string | null = null;
   private walLog: string[] = [];
-  private indices: Record<string, Record<string, any[]>> = {};
+  private indices: Record<string, Record<string, Record<string, any[]>>> = {};
 
   constructor() {
     this.initializeDatabase();
@@ -79,7 +81,7 @@ class SqliteDatabaseEngine {
           'treasury_transactions', 'receipts', 'payments', 'checks',
           'accounts', 'accounting_periods', 'journal_entries', 'journal_lines',
           'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs',
-          'notifications', 'notification_preferences'
+          'notifications', 'notification_preferences', 'inventory_documents', 'inventory_document_items'
         ];
         tables.forEach((table) => {
           if (!this.state[table]) {
@@ -156,6 +158,8 @@ class SqliteDatabaseEngine {
       inventory_revaluation_logs: [],
       notifications: [],
       notification_preferences: [],
+      inventory_documents: [],
+      inventory_document_items: [],
     };
     this.ensureDefaultBusinesses();
     this.saveState();
@@ -186,28 +190,28 @@ class SqliteDatabaseEngine {
     this.walLog = [];
   }
 
-  // Rebuild indices for fast lookup (Optimized indexing)
+  // Rebuild indices for fast lookup (Optimized indexing with composite keys)
   private rebuildIndices() {
     this.indices = {};
     const indexedKeys: Record<string, string[]> = {
       parties: ['id', 'business_id'],
-      items: ['id', 'business_id'],
-      documents: ['id', 'business_id', 'party_id'],
+      items: ['id', 'business_id', 'code', 'category_id'],
+      documents: ['id', 'business_id', 'party_id', 'document_type', 'status', 'warehouse_id', 'business_id:document_type', 'business_id:status'],
       document_items: ['id', 'document_id', 'item_id'],
-      inventory_balances: ['warehouse_id', 'item_id'],
-      inventory_transactions: ['id', 'document_id', 'item_id'],
+      inventory_balances: ['warehouse_id', 'item_id', 'warehouse_id:item_id'],
+      inventory_transactions: ['id', 'document_id', 'item_id', 'warehouse_id', 'item_id:warehouse_id'],
       warehouses: ['id', 'business_id'],
       cash_accounts: ['id', 'business_id'],
       payment_methods: ['id', 'business_id'],
       treasury_transactions: ['id', 'business_id', 'account_id', 'party_id', 'document_id'],
       receipts: ['id', 'business_id', 'party_id'],
       payments: ['id', 'business_id', 'party_id'],
-      checks: ['id', 'business_id', 'party_id'],
-      accounts: ['id', 'business_id', 'parent_id'],
+      checks: ['id', 'business_id', 'party_id', 'status'],
+      accounts: ['id', 'business_id', 'parent_id', 'code'],
       accounting_periods: ['id', 'business_id'],
-      journal_entries: ['id', 'business_id'],
+      journal_entries: ['id', 'business_id', 'journal_date'],
       journal_lines: ['id', 'journal_id', 'account_id', 'party_id'],
-      inventory_cost_layers: ['id', 'business_id', 'item_id', 'warehouse_id', 'document_item_id'],
+      inventory_cost_layers: ['id', 'business_id', 'item_id', 'warehouse_id', 'document_item_id', 'item_id:warehouse_id'],
       inventory_cost_movements: ['id', 'business_id', 'document_item_id', 'layer_id'],
       cogs_entries: ['id', 'business_id', 'document_id', 'item_id'],
       inventory_revaluation_logs: ['id', 'business_id', 'item_id', 'warehouse_id'],
@@ -217,14 +221,29 @@ class SqliteDatabaseEngine {
       this.indices[table] = {};
       const rows = (this.state as any)[table] || [];
       for (const key of keys) {
-        this.indices[table][key] = rows.reduce((acc: any, row: any) => {
-          const val = row[key];
-          if (val !== undefined && val !== null) {
-            if (!acc[val]) acc[val] = [];
-            acc[val].push(row);
+        this.indices[table][key] = {};
+        const isComposite = key.includes(':');
+        const compositeFields = isComposite ? key.split(':') : [key];
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          let val: string | undefined;
+          if (isComposite) {
+            const values = compositeFields.map((f) => row[f]);
+            if (values.every((v) => v !== undefined && v !== null)) {
+              val = values.join(':');
+            }
+          } else {
+            val = row[key];
           }
-          return acc;
-        }, {});
+
+          if (val !== undefined && val !== null) {
+            if (!this.indices[table][key][val]) {
+              this.indices[table][key][val] = [];
+            }
+            this.indices[table][key][val].push(row);
+          }
+        }
       }
     }
   }
@@ -488,6 +507,93 @@ class SqliteDatabaseEngine {
     }
     const rows = this.queryAll<any>(table);
     return rows.filter((r) => r.business_id === businessId) as T[];
+  }
+
+  public queryByIndex<T>(table: keyof DBState, indexKey: string, indexVal: string): T[] {
+    const tableIndices = this.indices[table as string];
+    if (tableIndices && tableIndices[indexKey] && tableIndices[indexKey][indexVal]) {
+      return tableIndices[indexKey][indexVal] as T[];
+    }
+    // Fallback if index missing
+    const rows = this.queryAll<any>(table);
+    if (indexKey.includes(':')) {
+      const keys = indexKey.split(':');
+      const vals = indexVal.split(':');
+      return rows.filter((r) => keys.every((k, idx) => String(r[k]) === vals[idx])) as T[];
+    }
+    return rows.filter((r) => String(r[indexKey]) === indexVal) as T[];
+  }
+
+  public queryPaginated<T>(
+    table: keyof DBState,
+    businessId?: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      filterFn?: (item: T) => boolean;
+      sortFn?: (a: T, b: T) => number;
+      indexKey?: string;
+      indexVal?: string;
+    }
+  ): { data: T[]; total: number; page: number; limit: number; totalPages: number } {
+    const page = options?.page && options.page > 0 ? options.page : 1;
+    const limit = options?.limit && options.limit > 0 ? options.limit : 50;
+
+    let dataset: T[] = [];
+    if (options?.indexKey && options?.indexVal) {
+      dataset = this.queryByIndex<T>(table, options.indexKey, options.indexVal);
+    } else if (businessId) {
+      dataset = this.queryByBusiness<T>(table, businessId);
+    } else {
+      dataset = this.queryAll<T>(table);
+    }
+
+    if (options?.filterFn) {
+      dataset = dataset.filter(options.filterFn);
+    }
+
+    if (options?.sortFn) {
+      dataset = [...dataset].sort(options.sortFn);
+    }
+
+    const total = dataset.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const data = dataset.slice(startIndex, startIndex + limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  public searchRecords<T>(
+    table: keyof DBState,
+    businessId: string,
+    searchFields: (keyof T)[],
+    query: string,
+    limit: number = 20
+  ): T[] {
+    if (!query || !query.trim()) return [];
+    const q = query.trim().toLowerCase();
+    const dataset = this.queryByBusiness<T>(table, businessId);
+
+    const matches: T[] = [];
+    for (let i = 0; i < dataset.length; i++) {
+      const item = dataset[i];
+      for (let j = 0; j < searchFields.length; j++) {
+        const val = item[searchFields[j]];
+        if (val !== undefined && val !== null && String(val).toLowerCase().includes(q)) {
+          matches.push(item);
+          break;
+        }
+      }
+      if (matches.length >= limit) break;
+    }
+    return matches;
   }
 
   public insertRecord<T>(table: keyof DBState, record: any): T {

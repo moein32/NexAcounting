@@ -12,6 +12,7 @@ import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../stores/authStore';
 import { useAppStore } from '../../../stores/appStore';
 import { biService } from '../../../services/biService';
+import { DashboardDataService } from '../../../services/dashboardDataService';
 import { Badge } from '../../../components/ui/Badge';
 
 
@@ -21,11 +22,11 @@ export function DashboardPage() {
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (forceRefresh: boolean = false) => {
     if (!currentBusiness?.id) return;
     setLoading(true);
     try {
-      const data = await biService.getDashboardMetrics(currentBusiness.id);
+      const data = await DashboardDataService.getMetrics(currentBusiness.id, forceRefresh);
       setMetrics(data);
     } catch (e) {
       console.error('Error fetching dashboard business intelligence data', e);
@@ -35,7 +36,7 @@ export function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
   }, [currentBusiness?.id]);
 
   return (
@@ -73,7 +74,7 @@ export function DashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchDashboardData}
+              onClick={() => fetchDashboardData(true)}
               disabled={loading}
               icon={loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               className="bg-white/10 text-white border-white/20 hover:bg-white/20"

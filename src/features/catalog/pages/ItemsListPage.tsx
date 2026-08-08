@@ -16,6 +16,7 @@ import {
   XCircle,
   SlidersHorizontal,
   RefreshCw,
+  MoreVertical,
 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { itemService } from '../../../services/itemService';
@@ -31,6 +32,7 @@ import { LoadingState } from '../../../components/ui/LoadingState';
 import { Dropdown } from '../../../components/ui/Dropdown';
 import { showToast } from '../../../components/ui/Toast';
 import { ItemTypeBadge, ItemStatusBadge } from '../components/ItemTypeBadge';
+import { formatCurrency } from '../../../lib/utils';
 
 interface ItemsListPageProps {
   forcedType?: ItemType;
@@ -44,10 +46,8 @@ export function ItemsListPage({
   subtitleOverride,
 }: ItemsListPageProps) {
   const navigate = useNavigate();
-  const { currentBusiness, currentUserId } = useAuthStore((state) => ({
-    currentBusiness: state.currentBusiness,
-    currentUserId: state.user?.id,
-  }));
+  const currentBusiness = useAuthStore((state) => state.currentBusiness);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
@@ -61,9 +61,6 @@ export function ItemsListPage({
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [page, setPage] = useState(1);
   const pageSize = 12;
-
-  // Deactivate modal state
-  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const fetchCategories = useCallback(async () => {
     if (!currentBusiness) return;
@@ -112,8 +109,6 @@ export function ItemsListPage({
       fetchItems();
     } catch (err: any) {
       showToast.error('خطا در تغییر وضعیت کالا', err.message);
-    } finally {
-      setDeactivatingId(null);
     }
   };
 
@@ -134,7 +129,7 @@ export function ItemsListPage({
       : 'مدیریت متمرکز کالاها، خدمات، دسته‌بندی‌ها و لیست‌های قیمت');
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-20 md:pb-12">
       <PageHeader
         title={pageTitle}
         description={pageSubtitle}
@@ -150,7 +145,7 @@ export function ItemsListPage({
                   className="gap-1.5"
                 >
                   <FolderTree className="w-4 h-4 text-amber-600" />
-                  <span>دسته‌بندی‌ها</span>
+                  <span className="hidden sm:inline">دسته‌بندی‌ها</span>
                 </Button>
 
                 <Button
@@ -160,7 +155,7 @@ export function ItemsListPage({
                   className="gap-1.5"
                 >
                   <Ruler className="w-4 h-4 text-emerald-600" />
-                  <span>واحدها</span>
+                  <span className="hidden sm:inline">واحدها</span>
                 </Button>
 
                 <Button
@@ -170,7 +165,7 @@ export function ItemsListPage({
                   className="gap-1.5"
                 >
                   <Tags className="w-4 h-4 text-purple-600" />
-                  <span>لیست‌های قیمت</span>
+                  <span className="hidden sm:inline">لیست‌های قیمت</span>
                 </Button>
               </>
             )}
@@ -182,25 +177,25 @@ export function ItemsListPage({
               className="gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              <span>تعریف کالا / خدمت جدید</span>
+              <span>تعریف آیتم جدید</span>
             </Button>
           </div>
         }
       />
 
       {/* Filter and Search Bar */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="md:col-span-1 relative">
+      <Card className="p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="relative">
             <Input
               type="text"
-              placeholder="جستجو بر اساس نام، کد، SKU یا بارکد..."
+              placeholder="جستجو بر اساس نام، کد، SKU..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-9"
+              className="pl-9 text-xs font-bold"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           </div>
@@ -252,19 +247,74 @@ export function ItemsListPage({
       {isLoading ? (
         <LoadingState text="در حال دریافت فهرست کالاها و خدمات..." />
       ) : items.length === 0 ? (
-        <Card className="p-8">
+        <Card className="p-8 rounded-3xl">
           <EmptyState
             title="هیچ کالا یا خدمتی یافت نشد"
-            description="موردی با مشخصات یا فیلترهای جستجوی شما پیدا نشد. برای شروع می‌توانید اولین آیتم را ثبت کنید."
+            description="موردی با مشخصات یا فیلترهای جستجوی شما پیدا نشد."
             actionLabel="ایجاد کالا / خدمت جدید"
             onAction={() => navigate('/items/new')}
           />
         </Card>
       ) : (
         <div className="space-y-4">
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-            <table className="w-full text-right text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+          {/* MOBILE CARDS LIST */}
+          <div className="block md:hidden space-y-3">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => navigate(`/items/${item.id}`)}
+                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 space-y-3 shadow-xs hover:border-indigo-500/50 active:scale-98 transition-all cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center shrink-0">
+                        {item.item_type === 'product' ? (
+                          <Package className="w-6 h-6" />
+                        ) : (
+                          <Wrench className="w-6 h-6" />
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-slate-100">
+                        {item.name}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        کد: <span className="font-mono font-bold">{item.code || '---'}</span> • واحد: {item.unit?.name || '---'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <ItemStatusBadge isActive={item.is_active} />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {item.category?.name || 'بدون دسته‌بندی'}
+                  </span>
+
+                  <div className="text-left">
+                    <span className="text-[10px] text-slate-400 block">قیمت فروش:</span>
+                    <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
+                      {formatCurrency(Number(item.default_sale_price))} تومان
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* DESKTOP TABLE */}
+          <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+            <table className="w-full text-right text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="py-3.5 px-4">کالا / خدمت</th>
                   <th className="py-3.5 px-4">نوع</th>
@@ -289,10 +339,10 @@ export function ItemsListPage({
                           <img
                             src={item.image_url}
                             alt={item.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
                             {item.item_type === 'product' ? (
                               <Package className="w-5 h-5 text-blue-500" />
                             ) : (
@@ -308,7 +358,7 @@ export function ItemsListPage({
                             {item.name}
                           </div>
                           {(item.brand || item.model) && (
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <div className="text-[10px] text-slate-400 mt-0.5">
                               {[item.brand, item.model].filter(Boolean).join(' - ')}
                             </div>
                           )}
@@ -323,7 +373,7 @@ export function ItemsListPage({
                     <td className="py-3.5 px-4 font-mono text-xs">
                       <div>{item.code || '-'}</div>
                       {item.sku && (
-                        <div className="text-slate-400 text-[11px]">SKU: {item.sku}</div>
+                        <div className="text-slate-400 text-[10px]">SKU: {item.sku}</div>
                       )}
                     </td>
 
@@ -335,8 +385,8 @@ export function ItemsListPage({
                       {item.unit?.name || '-'}
                     </td>
 
-                    <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
-                      {Number(item.default_sale_price).toLocaleString('fa-IR')} تومان
+                    <td className="py-3.5 px-4 font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                      {formatCurrency(Number(item.default_sale_price))} تومان
                     </td>
 
                     <td className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-400">

@@ -5,6 +5,7 @@ interface UIState {
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
   mobileMenuOpen: boolean;
+  globalSearchOpen: boolean;
   theme: ThemeMode;
   
   toggleSidebar: () => void;
@@ -13,6 +14,8 @@ interface UIState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleMobileMenu: () => void;
   setMobileMenuOpen: (open: boolean) => void;
+  toggleGlobalSearch: () => void;
+  setGlobalSearchOpen: (open: boolean) => void;
   setTheme: (theme: ThemeMode) => void;
 }
 
@@ -30,6 +33,7 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: true,
   sidebarCollapsed: false,
   mobileMenuOpen: false,
+  globalSearchOpen: false,
   theme: getInitialTheme(),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -38,6 +42,8 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleMobileMenu: () => set((state) => ({ mobileMenuOpen: !state.mobileMenuOpen })),
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
+  toggleGlobalSearch: () => set((state) => ({ globalSearchOpen: !state.globalSearchOpen })),
+  setGlobalSearchOpen: (open) => set({ globalSearchOpen: open }),
   setTheme: (theme) => {
     localStorage.setItem('nex_theme', theme);
     set({ theme });

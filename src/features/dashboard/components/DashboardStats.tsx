@@ -14,7 +14,7 @@ interface DashboardStatsProps {
   };
 }
 
-export function DashboardStats({ metrics }: DashboardStatsProps) {
+export const DashboardStats = React.memo(function DashboardStats({ metrics }: DashboardStatsProps) {
   if (!metrics) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -67,9 +67,9 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
       ))}
     </div>
   );
-}
+});
 
-export function SecondaryDashboardStats({ metrics }: DashboardStatsProps) {
+export const SecondaryDashboardStats = React.memo(function SecondaryDashboardStats({ metrics }: DashboardStatsProps) {
   if (!metrics) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -114,4 +114,4 @@ export function SecondaryDashboardStats({ metrics }: DashboardStatsProps) {
       ))}
     </div>
   );
-}
+});
