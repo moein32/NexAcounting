@@ -95,7 +95,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const fakeUser = {
         id: 'local_user',
-        email: 'admin@nexaccounting.local',
+        email: 'admin@nexjib.local',
       };
 
       const localProfile: Profile = {

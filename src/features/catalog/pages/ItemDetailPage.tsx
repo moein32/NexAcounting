@@ -416,7 +416,7 @@ export function ItemDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {item.prices.map((p) => (
+                  {item.prices?.map((p) => (
                     <tr key={p.id}>
                       <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
                         {p.price_list_name || 'لیست قیمت'}
@@ -447,7 +447,7 @@ export function ItemDetailPage() {
             <p className="text-xs text-slate-500 py-4">هیچ ویژگی فنی برای این کالا ثبت نشده است.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {item.attributes.map((attr) => (
+              {item.attributes?.map((attr) => (
                 <div
                   key={attr.id}
                   className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-xs"

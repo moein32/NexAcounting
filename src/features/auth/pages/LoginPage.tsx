@@ -228,7 +228,7 @@ export function LoginPage() {
             <Building2 className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            سامانه هوشمند مالی NexAccounting
+            سامانه هوشمند مالی NexJib (نکس‌جیب)
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             حسابداری امن، آفلاین‌محور و مدیریت زنجیره تامین بر روی مرورگر شما
@@ -266,7 +266,7 @@ export function LoginPage() {
 
               <CardContent className="space-y-6">
                 {/* Visual PIN Dots */}
-                <div className="flex justify-center gap-4 py-2">
+                <div className="flex justify-center gap-4 py-2 dir-ltr" dir="ltr">
                   {[1, 2, 3, 4, 5, 6].map((num) => (
                     <div
                       key={num}
@@ -280,7 +280,7 @@ export function LoginPage() {
                 </div>
 
                 {/* Keypad Layout */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3 dir-ltr" dir="ltr">
                   {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                     <button
                       key={digit}
@@ -564,7 +564,7 @@ export function LoginPage() {
         )}
 
         <p className="text-center text-[11px] text-slate-400 font-medium">
-          سامانه امن NexAccounting • پایگاه داده محلی SQLite با پایداری تراکنشی
+          سامانه امن NexJib • پایگاه داده محلی SQLite با پایداری تراکنشی
         </p>
       </div>
     </div>

@@ -77,8 +77,8 @@ export function SettingsPage() {
   );
 
   // Backup States
-  const [backupPassword, setBackupPassword] = useState('nexaccounting-secure-pass');
-  const [restorePassword, setRestorePassword] = useState('nexaccounting-secure-pass');
+  const [backupPassword, setBackupPassword] = useState('nexjib-secure-pass');
+  const [restorePassword, setRestorePassword] = useState('nexjib-secure-pass');
   const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +118,7 @@ export function SettingsPage() {
       const dateStr = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
       
       link.href = url;
-      link.download = `nexaccounting_backup_${dateStr}.nxb`;
+      link.download = `nexjib_backup_${dateStr}.nxb`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -895,7 +895,7 @@ export function SettingsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      {diagnosticReport.results.map((res) => (
+                      {diagnosticReport.results?.map((res) => (
                         <div
                           key={res.id}
                           className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1"

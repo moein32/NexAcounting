@@ -149,7 +149,7 @@ export function PartyDetailPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <PartyTypeBadge type={party.party_type} />
-              {party.roles.map((r) => (
+              {party.roles?.map((r) => (
                 <PartyRoleBadge key={r} role={r} />
               ))}
               <Badge variant={party.is_active ? 'success' : 'neutral'} size="sm">
@@ -413,7 +413,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {party.contacts.map((c, i) => (
+                {party.contacts?.map((c, i) => (
                   <TableRow key={c.id || i}>
                     <TableCell className="font-bold">{c.name}</TableCell>
                     <TableCell>{c.position || '—'}</TableCell>

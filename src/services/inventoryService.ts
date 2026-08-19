@@ -200,12 +200,20 @@ function setToStorage<T>(key: string, data: T[]) {
     if (key === STORAGE_KEYS.BALANCES) {
       (data as unknown as InventoryBalance[]).forEach((bal) => {
         const list = db.queryAll<InventoryBalance>('inventory_balances');
-        const idx = list.findIndex((b) => b.warehouse_id === bal.warehouse_id && b.item_id === bal.item_id);
-        if (idx !== -1) {
-          list[idx].quantity = bal.quantity;
-          db.updateRecord('inventory_balances', list[idx].warehouse_id + '_' + list[idx].item_id, list[idx]);
+        const existing = list.find((b) => (bal.id && b.id === bal.id) || (b.warehouse_id === bal.warehouse_id && b.item_id === bal.item_id));
+        if (existing) {
+          const recordToUpdate = {
+            ...existing,
+            ...bal,
+            id: existing.id,
+          };
+          db.updateRecord('inventory_balances', existing.id, recordToUpdate);
         } else {
-          db.insertRecord('inventory_balances', bal);
+          const recordToInsert = {
+            ...bal,
+            id: bal.id || `bal_${bal.warehouse_id}_${bal.item_id}`,
+          };
+          db.insertRecord('inventory_balances', recordToInsert);
         }
       });
       return;
@@ -242,9 +250,10 @@ export const inventoryService = {
       // Fallback check old boolean setting
       const oldVal = localStorage.getItem(`${STORAGE_KEYS.ALLOW_NEG}_${businessId}`);
       if (oldVal === 'true') return 'allow';
-      return 'block'; // Default strict policy
+      if (oldVal === 'false') return 'block';
+      return 'allow'; // Default policy allows negative inventory for seamless sales document issuance
     } catch {
-      return 'block';
+      return 'allow';
     }
   },
 
@@ -1124,12 +1133,15 @@ export const inventoryService = {
       // Check stock levels first for outgoing transactions according to negative stock policy
       if (txOutType && policy !== 'allow') {
         for (const itemRow of activeItems) {
+          const catItem = catalogItems.find(ci => ci.id === itemRow.item_id) || ItemRepository.getById(itemRow.item_id);
+          if (catItem && (catItem.track_inventory === false || catItem.item_type === 'service')) {
+            continue;
+          }
           const currentBal = balances.find(
             (b) => b.warehouse_id === doc.warehouse_id && b.item_id === itemRow.item_id
           );
           const currentQty = currentBal ? currentBal.quantity : 0;
           if (currentQty < itemRow.quantity) {
-            const catItem = catalogItems.find(ci => ci.id === itemRow.item_id) || ItemRepository.getById(itemRow.item_id);
             const itemName = catItem?.name || catItem?.title || 'کالای منتخب';
             if (policy === 'block') {
               throw new Error(

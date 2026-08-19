@@ -1,8 +1,8 @@
 export const APP_CONFIG = {
-  name: 'NexAccounting',
-  faName: 'نکس اکاونتینگ',
+  name: 'NexJib',
+  faName: 'نکس‌جیب',
   version: '1.0.0-beta',
   defaultCurrency: 'تومان' as const,
-  supportEmail: 'support@nexaccounting.io',
-  company: 'NexSystems Ltd',
+  supportEmail: 'support@nexjib.io',
+  company: 'NexJib Ltd',
 };

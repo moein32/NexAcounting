@@ -69,6 +69,14 @@ export function Header() {
 
   const currentRoute = routeTitleMap[location.pathname] || { title: 'صفحه اصلی' };
 
+  const isDarkTheme =
+    theme === 'dark' ||
+    (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const toggleTheme = () => {
+    setTheme(isDarkTheme ? 'light' : 'dark');
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/login', { replace: true });
@@ -113,7 +121,7 @@ export function Header() {
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
             <Link to="/dashboard" className="hover:text-blue-600 transition-colors">
-              نکس اکاونتینگ
+              نکس‌جیب
             </Link>
             {currentRoute.parent && (
               <>
@@ -161,11 +169,15 @@ export function Header() {
 
         {/* Theme Switcher */}
         <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          title={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}
+          onClick={toggleTheme}
+          className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+          title="تغییر حالت شب / روز"
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          {isDarkTheme ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+          )}
         </button>
 
         {/* Notification Bell */}

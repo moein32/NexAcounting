@@ -125,7 +125,7 @@ export function GlobalSearchView({ businessId }: GlobalSearchViewProps) {
       <div>
         <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <Search className="w-5 h-5 text-blue-600" />
-          <span>موتور جستجوی یکپارچه و هوشمند نکس حساب (Global Search)</span>
+          <span>موتور جستجوی یکپارچه و هوشمند نکس‌جیب (Global Search)</span>
         </h2>
         <p className="text-[11px] text-slate-400 mt-1">جستجوی بلادرنگ در اطلاعات فاکتورها، طرف حساب‌ها، کالاها، حساب‌ها و اسناد تجاری</p>
       </div>

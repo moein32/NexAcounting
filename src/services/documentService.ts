@@ -941,8 +941,15 @@ export const documentService = {
       }
 
       // Filter products that require inventory tracking
+      const catalogItemsRes = await itemService.getItems(businessId).catch(() => ({ data: [] }));
+      const catalogItems = catalogItemsRes.data || [];
       const productLines = doc.items.filter((it) => {
-        return it.quantity > 0;
+        if (!it.quantity || it.quantity <= 0) return false;
+        const catItem = catalogItems.find((ci) => ci.id === it.item_id);
+        if (catItem && (catItem.track_inventory === false || catItem.item_type === 'service')) {
+          return false;
+        }
+        return true;
       });
 
       if (productLines.length > 0) {

@@ -25,7 +25,7 @@ import {
   Sparkles,
   Download,
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../../utils/html2canvasHelper';
 import { jsPDF } from 'jspdf';
 
 import { PrintInvoiceModal } from '../../../components/invoice/PrintInvoiceModal';
@@ -37,7 +37,7 @@ export function SalesDetailPage() {
   const navigate = useNavigate();
   const { currentBusiness, user } = useAuthStore();
   const [doc, setDoc] = useState<Document | null>(null);
-  const [events, setEvents] = useState<DocumentEvent[]>(null as any);
+  const [events, setEvents] = useState<DocumentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -99,7 +99,7 @@ export function SalesDetailPage() {
         setShowPrintModal(true);
         return;
       }
-      const canvas = await html2canvas(printableElement, {
+      const canvas = await safeHtml2Canvas(printableElement, {
         scale: 2,
         useCORS: true,
         logging: false,
@@ -397,7 +397,7 @@ export function SalesDetailPage() {
             <div className="grid grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-800 pt-8 mt-8 text-center text-xs text-slate-400 print:grid">
               <div>
                 <p className="font-bold text-slate-600 mb-12">مهر و امضای صادرکننده (فروشنده)</p>
-                <p className="text-[10px]">نرم‌افزار یکپارچه NexAccounting</p>
+                <p className="text-[10px]">نرم‌افزار یکپارچه NexJib (نکس‌جیب)</p>
               </div>
               <div>
                 <p className="font-bold text-slate-600 mb-12">امضا و تایید تحویل‌گیرنده (خریدار)</p>
@@ -497,9 +497,9 @@ export function SalesDetailPage() {
               <span>تاریخچه گردش و وقایع</span>
             </h3>
 
-            {events && events.length > 0 ? (
+            {Array.isArray(events) && events.length > 0 ? (
               <div className="relative border-r-2 border-slate-200 dark:border-slate-800 pr-4 mr-2 space-y-4">
-                {events.map((ev) => (
+                {(events || []).map((ev) => (
                   <div key={ev.id} className="relative">
                     {/* Circle dot on timeline */}
                     <div className="absolute -right-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white dark:border-slate-950"></div>

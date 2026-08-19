@@ -10,7 +10,7 @@ import {
 } from '../../types/print';
 import { printService } from '../../services/printService';
 import { InvoiceTemplateRenderer } from './InvoiceTemplateRenderer';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../utils/html2canvasHelper';
 import { jsPDF } from 'jspdf';
 import {
   Printer,
@@ -41,8 +41,6 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
   document: doc,
   business,
 }) => {
-  if (!isOpen) return null;
-
   const businessId = business?.id || doc.business_id || 'demo_biz_1';
   const [settings, setSettings] = useState<PrintSettings>(() => {
     const saved = printService.getPrintSettings(businessId);
@@ -60,6 +58,65 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const touchStartDistRef = useRef<number | null>(null);
+  const touchStartZoomRef = useRef<number>(85);
+
+  const calculateAutoFitZoom = () => {
+    if (typeof window === 'undefined') return 85;
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return 85;
+
+    const isLandscape =
+      settings.orientation === 'landscape' ||
+      settings.pageSize.includes('landscape') ||
+      settings.templateId.includes('landscape');
+
+    let paperWidthPx = 794;
+    if (settings.pageSize === 'thermal') {
+      paperWidthPx = 302;
+    } else if (settings.pageSize === 'A5' || settings.pageSize === 'A5_landscape') {
+      paperWidthPx = isLandscape ? 794 : 559;
+    } else if (isLandscape) {
+      paperWidthPx = 1122;
+    }
+
+    const availableWidth = window.innerWidth - 16;
+    const autoZoom = Math.min(100, Math.max(25, Math.floor((availableWidth / paperWidthPx) * 100)));
+    return autoZoom;
+  };
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setZoom(calculateAutoFitZoom());
+    }
+  }, [settings.orientation, settings.pageSize, settings.templateId]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchStartDistRef.current = dist;
+      touchStartZoomRef.current = zoom;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDistRef.current !== null) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scaleFactor = currentDist / touchStartDistRef.current;
+      const newZoom = Math.min(250, Math.max(25, Math.round(touchStartZoomRef.current * scaleFactor)));
+      setZoom(newZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartDistRef.current = null;
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -79,6 +136,35 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
     }, 150);
   };
 
+  const isLandscape =
+    settings.orientation === 'landscape' ||
+    settings.pageSize.includes('landscape') ||
+    settings.templateId.includes('landscape');
+
+  const paperWidthPx =
+    settings.pageSize === 'thermal'
+      ? 302
+      : settings.pageSize === 'A5' || settings.pageSize === 'A5_landscape'
+      ? isLandscape
+        ? 794
+        : 559
+      : isLandscape
+      ? 1122
+      : 794;
+
+  const paperMinHeightPx =
+    settings.pageSize === 'thermal'
+      ? 400
+      : settings.pageSize === 'A5' || settings.pageSize === 'A5_landscape'
+      ? isLandscape
+        ? 559
+        : 794
+      : isLandscape
+      ? 794
+      : 1122;
+
+  const scale = zoom / 100;
+
   const handleDownloadPDF = async () => {
     try {
       setIsExportingPdf(true);
@@ -92,7 +178,7 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
         throw new Error('محتوای فاکتور یافت نشد.');
       }
 
-      const canvas = await html2canvas(printableElement, {
+      const canvas = await safeHtml2Canvas(printableElement, {
         scale: 2,
         useCORS: true,
         logging: false,
@@ -131,6 +217,8 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
   const updateSetting = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-950 text-slate-100 no-print overflow-hidden font-sans">
@@ -548,48 +636,78 @@ export const PrintInvoiceModal: React.FC<PrintInvoiceModalProps> = ({
         <main
           className={`${
             mobileViewMode === 'preview' ? 'flex' : 'hidden'
-          } md:flex flex-1 bg-slate-950 p-3 sm:p-6 overflow-auto flex-col items-center justify-start relative w-full`}
+          } md:flex flex-1 bg-slate-950 p-2 sm:p-6 overflow-auto flex-col items-center justify-start relative w-full touch-pan-x touch-pan-y`}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Zoom & View Controls Toolbar */}
-          <div className="sticky top-0 z-20 flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-2xl mb-4 shadow-xl text-xs">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center justify-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-2xl mb-3 shadow-xl text-xs">
             <span className="text-slate-400 font-medium text-[11px] hidden sm:inline">
               بزرگ‌نمایی:
             </span>
             <button
-              onClick={() => setZoom((z) => Math.max(40, z - 10))}
+              type="button"
+              onClick={() => setZoom((z) => Math.max(25, z - 10))}
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 font-bold active:scale-95"
             >
               -
             </button>
-            <span className="font-mono font-bold text-indigo-400 w-10 text-center text-xs">
+            <span className="font-mono font-bold text-indigo-400 w-12 text-center text-xs">
               {zoom}٪
             </span>
             <button
-              onClick={() => setZoom((z) => Math.min(150, z + 10))}
+              type="button"
+              onClick={() => setZoom((z) => Math.min(250, z + 10))}
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 font-bold active:scale-95"
             >
               +
             </button>
             <button
+              type="button"
+              onClick={() => setZoom(calculateAutoFitZoom())}
+              className="px-2 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 rounded-xl text-[11px] font-bold active:scale-95 flex items-center gap-1"
+            >
+              <span>تنظیم عرض</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setZoom(85)}
               className="mr-1 text-slate-400 hover:text-white text-[11px] flex items-center gap-1"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>85%</span>
+              <span>100%</span>
             </button>
+          </div>
+
+          {/* Pinch-to-zoom tip badge on mobile */}
+          <div className="md:hidden text-[10px] text-slate-400 bg-slate-900/80 border border-slate-800 px-2.5 py-1 rounded-full mb-2 flex items-center gap-1">
+            <span>💡 برای بزرگ‌نمایی می‌توانید با ۲ انگشت زوم (Pinch) کنید</span>
           </div>
 
           {/* Printable Invoice Page Canvas Wrapper */}
           <div
-            ref={previewContainerRef}
-            className="transition-transform origin-top shadow-2xl rounded-sm my-2 bg-white text-black max-w-full overflow-x-auto"
-            style={{ transform: `scale(${zoom / 100})` }}
+            className="flex justify-center items-start overflow-visible transition-all my-2"
+            style={{
+              width: `${paperWidthPx * scale}px`,
+              minHeight: `${paperMinHeightPx * scale}px`,
+            }}
           >
-            <InvoiceTemplateRenderer
-              document={doc}
-              business={business}
-              settings={settings}
-            />
+            <div
+              ref={previewContainerRef}
+              className="shadow-2xl rounded-sm bg-white text-black transition-transform"
+              style={{
+                width: `${paperWidthPx}px`,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              <InvoiceTemplateRenderer
+                document={doc}
+                business={business}
+                settings={settings}
+              />
+            </div>
           </div>
         </main>
       </div>

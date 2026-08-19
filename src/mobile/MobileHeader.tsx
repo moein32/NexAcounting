@@ -33,7 +33,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ onOpenSearch }) => {
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate max-w-[130px]">
-                {currentBusiness?.name || 'نکس حسابداری'}
+                {currentBusiness?.name || 'نکس‌جیب'}
               </span>
               {isDemoMode && (
                 <span className="px-1.5 py-0.2 text-[9px] font-bold bg-amber-400/20 text-amber-700 dark:text-amber-400 rounded-md">

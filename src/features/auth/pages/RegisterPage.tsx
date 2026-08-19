@@ -67,7 +67,7 @@ export function RegisterPage() {
             <Building2 className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            ثبت‌نام در NexAccounting
+            ثبت‌نام در NexJib (نکس‌جیب)
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             راه‌اندازی فوری سازمان، حساب کاربری و کسب‌وکار جدید

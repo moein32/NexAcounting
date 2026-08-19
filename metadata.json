@@ -1,6 +1,6 @@
 {
-  "name": "NexAccounting",
-  "description": "نرم‌افزار حرفه‌ای مدیریت فروش، انبار، خزانه و حسابداری دوبل چندپلتفرمی",
+  "name": "NexJib",
+  "description": "نرم‌افزار حرفه‌ای مدیریت فروش، انبار، خزانه و حسابداری دوبل چندپلتفرمی نکس‌جیب",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

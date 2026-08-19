@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../utils/html2canvasHelper';
 import { jsPDF } from 'jspdf';
 
 export class PdfExporter {
@@ -11,7 +11,7 @@ export class PdfExporter {
     filename: string,
     options?: { pageSize?: 'a4' | 'a5'; orientation?: 'p' | 'l' }
   ): Promise<void> {
-    const canvas = await html2canvas(element, {
+    const canvas = await safeHtml2Canvas(element, {
       scale: 2, // High resolution canvas rendering
       useCORS: true,
       logging: false,

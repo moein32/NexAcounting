@@ -21,7 +21,7 @@ import {
   TrendingUp,
   Download,
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '../../../utils/html2canvasHelper';
 import { jsPDF } from 'jspdf';
 
 import { PrintInvoiceModal } from '../../../components/invoice/PrintInvoiceModal';
@@ -81,7 +81,7 @@ export function PurchaseDetailPage() {
         setShowPrintModal(true);
         return;
       }
-      const canvas = await html2canvas(printableElement, {
+      const canvas = await safeHtml2Canvas(printableElement, {
         scale: 2,
         useCORS: true,
         logging: false,
@@ -395,9 +395,9 @@ export function PurchaseDetailPage() {
               <span>تاریخچه وقایع تدارکاتی</span>
             </h3>
 
-            {events && events.length > 0 ? (
+            {Array.isArray(events) && events.length > 0 ? (
               <div className="relative border-r-2 border-slate-200 dark:border-slate-800 pr-4 mr-2 space-y-4">
-                {events.map((ev) => (
+                {(events || []).map((ev) => (
                   <div key={ev.id} className="relative">
                     <div className="absolute -right-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white dark:border-slate-950"></div>
                     <div>

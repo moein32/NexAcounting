@@ -36,7 +36,7 @@ export const demoDataService = {
       if (!business) {
         business = db.insertRecord('businesses', {
           id: businessId,
-          name: 'فروشگاه تست NexAccounting',
+          name: 'فروشگاه تست نکس‌جیب (NexJib)',
           code: 'NX-DEMO',
           currency: 'تومان',
           fiscal_year: '۱۴۰۳',

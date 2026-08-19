@@ -551,7 +551,7 @@ export const InvoiceTemplateRenderer: React.FC<InvoiceTemplateRendererProps> = (
             {showSignatures && (
               <div className="col-span-3 border-r border-slate-400 pr-3 flex flex-col justify-between text-center text-[10px] h-20">
                 <p className="font-bold">مهر و امضای صادرکننده / خریدار</p>
-                <p className="text-slate-400">NexAccounting</p>
+                <p className="text-slate-400">NexJib</p>
               </div>
             )}
           </div>

@@ -284,7 +284,7 @@ export function PartiesListPage({
 
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
-                          {party.roles.map((r) => (
+                          {party.roles?.map((r) => (
                             <PartyRoleBadge key={r} role={r} />
                           ))}
                         </div>
@@ -364,7 +364,7 @@ export function PartiesListPage({
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <PartyTypeBadge type={party.party_type} />
-                      {party.roles.map((r) => (
+                      {party.roles?.map((r) => (
                         <PartyRoleBadge key={r} role={r} />
                       ))}
                     </div>

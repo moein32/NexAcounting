@@ -305,7 +305,7 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {stats.recentTransactions.length > 0 ? (
+                  {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
                     stats.recentTransactions.map((tx: any) => {
                       const label = getTransactionLabel(tx.transaction_type);
                       const isAddition =

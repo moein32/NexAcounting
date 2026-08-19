@@ -21,7 +21,7 @@ export function PurchaseReportView({ data, onPrint, onExportCSV }: PurchaseRepor
   if (!data) return null;
 
   const handleExportCSV = () => {
-    const csvRows = data.productsBreakdown.map(p => ({
+    const csvRows = (data.productsBreakdown || []).map(p => ({
       'کد کالا': p.code,
       'نام کالا': p.name,
       'تعداد تامین': p.qty,

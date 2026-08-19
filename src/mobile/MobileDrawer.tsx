@@ -84,7 +84,7 @@ export const MobileDrawer: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">
-                  نکس حسابداری
+                  نکس‌جیب
                 </h3>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   نسخه ویژه Android / Tablet
@@ -132,7 +132,7 @@ export const MobileDrawer: React.FC = () => {
                   {section.title}
                 </h4>
 
-                {section.items.map((item) => {
+                {section.items?.map((item) => {
                   const Icon = iconMap[item.iconName] || LayoutDashboard;
                   return (
                     <button
