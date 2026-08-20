@@ -5,6 +5,7 @@ import { documentService } from '../../../services/documentService';
 import { partyService } from '../../../services/partyService';
 import { inventoryService } from '../../../services/inventoryService';
 import { itemService } from '../../../services/itemService';
+import { SettingsRepository } from '../../../repositories';
 import { Party } from '../../../types/party';
 import { Warehouse } from '../../../types/inventory';
 import { Item } from '../../../types/catalog';
@@ -158,6 +159,8 @@ export function SalesCreatePage() {
 
   const handleAddProductFromSheet = (product: Item, quantity: number, unitPrice: number) => {
     const existingIdx = lines.findIndex((l) => l.item_id === product.id);
+    const defaultTaxRate = Number(SettingsRepository.get('default_tax_rate') ?? 0);
+    const itemTax = typeof product.tax_rate === 'number' ? Number(product.tax_rate) : defaultTaxRate;
 
     if (existingIdx >= 0) {
       const updated = [...lines];
@@ -174,7 +177,7 @@ export function SalesCreatePage() {
       updated[existingIdx] = line;
       setLines(updated);
     } else {
-      const math = documentService.calculateLineTotals(quantity, unitPrice, 0, 10);
+      const math = documentService.calculateLineTotals(quantity, unitPrice, 0, itemTax);
       setLines((prev) => [
         ...prev,
         {
@@ -184,7 +187,7 @@ export function SalesCreatePage() {
           quantity,
           unit_price: unitPrice,
           discount_percent: 0,
-          tax_percent: 10,
+          tax_percent: itemTax,
           line_subtotal: math.line_subtotal,
           line_total: math.line_total,
         },
@@ -596,7 +599,7 @@ export function SalesCreatePage() {
 
             {totals.tax_total > 0 && (
               <div className="flex justify-between items-center text-rose-600">
-                <span>مجموع مالیات (۱۰٪ VAT):</span>
+                <span>مجموع مالیات و عوارض (VAT):</span>
                 <span className="font-mono">{formatCurrency(totals.tax_total)} + تومان</span>
               </div>
             )}

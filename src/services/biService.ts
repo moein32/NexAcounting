@@ -167,30 +167,40 @@ export const biService = {
     // 3. Compute "Cash & Bank Balance"
     const totalCashBankBalance = cashAccounts.reduce((sum, acc) => sum + (acc.current_balance || 0), 0);
 
-    // 4. Compute "Accounts Receivable" (Customers debt)
+    // 4. Compute "Accounts Receivable" (Customers debt based strictly on real invoices and payments)
     const accountsReceivable = salesInvoices
       .filter(d => d.payment_status !== 'paid')
       .reduce((sum, d) => {
-        const paidAmount = 0; // In standard models, partially_paid has details, but let's assume total_amount as debt or partially settled
-        // Since we don't have secondary payment split on doc directly, we subtract based on payment_status or just sum unpaid amount
-        if (d.payment_status === 'unpaid') {
-          return sum + (d.grand_total || 0);
-        } else if (d.payment_status === 'partially_paid') {
-          return sum + ((d.grand_total || 0) * 0.4); // Approximation for partial
-        }
-        return sum;
+        const docTxs = db.queryAll<any>('treasury_transactions').filter(
+          t => t.business_id === businessId && t.transaction_type === 'IN' && t.document_id === d.id
+        );
+        const docReceipts = db.queryAll<any>('receipts').filter(
+          r => r.business_id === businessId && r.status === 'confirmed' && r.document_id === d.id
+        );
+        const realPaid = Math.max(
+          docTxs.reduce((s, t) => s + Number(t.amount || 0), 0),
+          docReceipts.reduce((s, r) => s + Number(r.amount || 0), 0)
+        );
+        const remainingDebt = Math.max(0, (d.grand_total || 0) - realPaid);
+        return sum + remainingDebt;
       }, 0);
 
-    // 5. Compute "Accounts Payable" (To suppliers)
+    // 5. Compute "Accounts Payable" (To suppliers based strictly on real invoices and payments)
     const accountsPayable = purchaseInvoices
       .filter(d => d.payment_status !== 'paid')
       .reduce((sum, d) => {
-        if (d.payment_status === 'unpaid') {
-          return sum + (d.grand_total || 0);
-        } else if (d.payment_status === 'partially_paid') {
-          return sum + ((d.grand_total || 0) * 0.4);
-        }
-        return sum;
+        const docTxs = db.queryAll<any>('treasury_transactions').filter(
+          t => t.business_id === businessId && t.transaction_type === 'OUT' && t.document_id === d.id
+        );
+        const docPayments = db.queryAll<any>('payments').filter(
+          p => p.business_id === businessId && p.status === 'confirmed' && p.document_id === d.id
+        );
+        const realPaid = Math.max(
+          docTxs.reduce((s, t) => s + Number(t.amount || 0), 0),
+          docPayments.reduce((s, p) => s + Number(p.amount || 0), 0)
+        );
+        const remainingDebt = Math.max(0, (d.grand_total || 0) - realPaid);
+        return sum + remainingDebt;
       }, 0);
 
     // 6. Compute "Inventory Value"

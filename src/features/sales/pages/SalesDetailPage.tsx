@@ -376,7 +376,7 @@ export function SalesDetailPage() {
                 )}
                 {doc.tax_total > 0 && (
                   <div className="flex justify-between items-center text-rose-600 font-medium">
-                    <span>مجموع مالیات و عوارض (۱۰٪):</span>
+                    <span>مجموع مالیات و عوارض ارزش افزوده (VAT):</span>
                     <span>{formatCurrency(doc.tax_total)} + {doc.currency}</span>
                   </div>
                 )}

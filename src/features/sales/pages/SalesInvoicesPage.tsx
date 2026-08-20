@@ -53,7 +53,7 @@ export function SalesInvoicesPage() {
         (t) => t.business_id === bizId && t.transaction_type === 'IN'
       );
 
-      // Compute statistics based on real retrieved documents & financial ledger
+      // Compute statistics based strictly on real retrieved documents & financial ledger
       let total = 0;
       let paid = 0;
       let drafts = 0;
@@ -61,21 +61,29 @@ export function SalesInvoicesPage() {
       list.forEach((inv) => {
         if (inv.status === 'confirmed') {
           total += inv.grand_total;
+          
+          // Check direct document allocations in treasury transactions or receipts
+          const docTxs = treasuryTxs.filter((t) => t.document_id === inv.id);
+          const directTxSum = docTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+          
+          const docReceipts = receipts.filter((r) => (r as any).document_id === inv.id);
+          const directReceiptSum = docReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+          const realDirectPaid = Math.max(directTxSum, directReceiptSum);
+
           if (inv.payment_status === 'paid') {
             paid += inv.grand_total;
           } else if (inv.payment_status === 'partially_paid') {
-            // Check direct document allocations in treasury transactions or receipts
-            const docTxs = treasuryTxs.filter((t) => t.document_id === inv.id);
-            const directTxSum = docTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-            
-            if (directTxSum > 0) {
-              paid += Math.min(directTxSum, inv.grand_total);
+            if (realDirectPaid > 0) {
+              paid += Math.min(realDirectPaid, inv.grand_total);
             } else {
-              // Fallback to proportional customer receipt allocations
-              const partyReceipts = receipts.filter((r) => r.party_id === inv.party_id);
-              const partyReceiptSum = partyReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-              const allocated = Math.min(partyReceiptSum, inv.grand_total);
-              paid += allocated > 0 ? allocated : inv.grand_total * 0.5;
+              // No verified receipt exists, paid amount is 0 (no estimation)
+              paid += 0;
+            }
+          } else {
+            // unpaid or other status
+            if (realDirectPaid > 0) {
+              paid += Math.min(realDirectPaid, inv.grand_total);
             }
           }
         } else if (inv.status === 'draft') {
