@@ -224,8 +224,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signIn: async (payload) => {
-    // If PIN is stored, use it as fallback login. Otherwise accept password.
-    set({ isAuthenticated: true });
+    set({ isLoading: true });
+    try {
+      const hash = localStorage.getItem('nex_secure_pin_hash');
+      const salt = localStorage.getItem('nex_secure_pin_salt');
+      
+      // If PIN/Password security is enabled, verify the provided credential
+      if (hash && salt) {
+        const matches = await PINManager.verifyPIN(payload.password, hash, salt);
+        if (!matches) {
+          throw new Error('رمز عبور یا پین وارد شده صحیح نمی‌باشد.');
+        }
+      }
+
+      set({ isAuthenticated: true });
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   signOut: async () => {
@@ -233,21 +248,75 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       isAuthenticated: false,
       isConfigured: false,
+      user: null,
+      profile: null,
+      currentBusiness: null,
+      permissions: [],
     });
   },
 
-  resetPassword: async () => {},
-  updatePassword: async () => {},
-  selectBusiness: () => {},
-  createBusiness: async () => {},
+  resetPassword: async (email: string) => {
+    // Reset local PIN credential securely
+    localStorage.removeItem('nex_secure_pin_hash');
+    localStorage.removeItem('nex_secure_pin_salt');
+  },
 
-  hasPermission: () => true,
+  updatePassword: async (password: string) => {
+    const salt = PINManager.generateSalt();
+    const hash = await PINManager.hashPIN(password, salt);
+    localStorage.setItem('nex_secure_pin_hash', hash);
+    localStorage.setItem('nex_secure_pin_salt', salt);
+  },
+
+  selectBusiness: (businessId: string) => {
+    localStorage.setItem(STORAGE_ACTIVE_BUSINESS_KEY, businessId);
+  },
+
+  createBusiness: async (payload) => {
+    await get().localSetupBusiness({
+      name: payload.name,
+      manager_name: 'مدیر کسب‌وکار',
+      phone: payload.phone || '',
+      currency: payload.currency || 'تومان',
+    });
+  },
+
+  hasPermission: (permissionKey: string) => {
+    const state = get();
+    const permissions = state.permissions || [];
+    
+    // Super-admin / Owner wildcard
+    if (permissions.includes('*') || permissions.includes('all')) {
+      return true;
+    }
+
+    if (permissions.includes(permissionKey)) {
+      return true;
+    }
+
+    // Wildcard prefix matching (e.g., 'sales.*' matches 'sales.invoices.create')
+    const keyParts = permissionKey.split('.');
+    for (let i = 1; i <= keyParts.length; i++) {
+      const prefixPattern = keyParts.slice(0, i).join('.') + '.*';
+      if (permissions.includes(prefixPattern)) {
+        return true;
+      }
+    }
+
+    return false;
+  },
 
   enableDemoMode: () => {
     // Deprecated for secure real SQLite usage
   },
 
   developerLogin: async () => {
+    // Developer login strictly allowed in development environment
+    if (!import.meta.env.DEV) {
+      console.warn('Developer login is disabled in production environments.');
+      return false;
+    }
+
     set({ isLoading: true });
     try {
       // 1. Activate session
@@ -278,10 +347,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         BusinessRepository.createProfile(profileData as any);
       }
       
-      // Seed data automatically takes effect as businessId is biz_main and list is empty
-      // Re-trigger initialize to load everything
       await get().initializeAuth();
-      set({ isAuthenticated: true });
+      set({ isAuthenticated: true, permissions: ['*'] });
       return true;
     } catch (e) {
       console.error('Developer mode login error:', e);

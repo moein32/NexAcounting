@@ -85,20 +85,23 @@ export const LicenseService = {
     const cached = localStorage.getItem(LICENSE_CACHE_KEY);
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.isValid === 'boolean') {
+          return parsed;
+        }
       } catch (e) {
-        // Fallback
+        // Fallback to default free tier
       }
     }
 
-    // Default license profile if none exists
+    // Default license profile if none exists is strictly Free tier (not unvalidated Pro)
     const defaultLicense: LicenseStatus = {
       isValid: true,
-      tier: 'professional',
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year expiry
+      tier: 'free',
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days initial trial/free
       activeDevicesCount: 1,
-      maxDevices: 3,
-      features: ['sales', 'purchases', 'inventory', 'treasury', 'reports', 'backup'],
+      maxDevices: 1,
+      features: ['sales', 'purchases', 'inventory', 'parties', 'catalog'],
     };
     this.cacheLicense(defaultLicense);
     return defaultLicense;
@@ -113,7 +116,7 @@ export const LicenseService = {
   async validateLicenseOnline(deviceId: string): Promise<LicenseStatus> {
     const current = this.getCachedLicense();
     if (!isSupabaseConfigured()) {
-      // Offline fallback
+      // Offline fallback: return current validated or free tier cached state
       return current;
     }
 
@@ -121,29 +124,44 @@ export const LicenseService = {
       // Connect to Central Supabase License Server
       const { data, error } = await supabase
         .from('license_activations')
-        .select('*')
+        .select(`
+          *,
+          license:licenses (
+            tier,
+            max_devices,
+            valid_until,
+            is_active
+          )
+        `)
         .eq('device_id', deviceId)
         .single();
 
-      if (error || !data) {
-        // Device not activated or subscription expired, keep using cached offline state for smooth operation
-        console.warn('License server unavailable or device unregistered. Using secure offline cached license.');
+      if (error || !data || !data.license) {
+        console.warn('License server verification: Device unregistered or license inactive.');
         return current;
       }
 
+      const lic = data.license;
+      const planFeatures: Record<string, string[]> = {
+        free: ['sales', 'purchases', 'inventory', 'parties', 'catalog'],
+        professional: ['sales', 'purchases', 'inventory', 'parties', 'catalog', 'treasury', 'reports', 'backup'],
+        enterprise: ['sales', 'purchases', 'inventory', 'parties', 'catalog', 'treasury', 'reports', 'backup', 'multi_user', 'audit_logs'],
+      };
+
+      const tier = (lic.tier as 'free' | 'professional' | 'enterprise') || 'free';
       const updatedStatus: LicenseStatus = {
-        isValid: data.is_active,
-        tier: data.tier || 'professional',
-        expiresAt: data.expires_at || current.expiresAt,
-        activeDevicesCount: data.devices_count || 1,
-        maxDevices: data.max_devices || 3,
-        features: data.enabled_features || current.features,
+        isValid: data.is_active && lic.is_active,
+        tier: tier,
+        expiresAt: lic.valid_until || current.expiresAt,
+        activeDevicesCount: 1,
+        maxDevices: lic.max_devices || 1,
+        features: planFeatures[tier] || planFeatures.free,
       };
 
       this.cacheLicense(updatedStatus);
       return updatedStatus;
     } catch (e) {
-      console.error('License verification failed. Utilizing offline fallback state.');
+      console.error('License verification failed. Utilizing offline state.');
       return current;
     }
   },

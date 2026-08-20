@@ -1,5 +1,6 @@
 import { db, DBState } from '../lib/sqlite';
 import { AccountingEngine } from '../services/accountingEngine';
+import { CryptoBackupEngine } from '../lib/cryptoBackup';
 
 
 // Define schemas/types internally to maintain compile-time type safety
@@ -322,6 +323,12 @@ export const InventoryRepository = {
     return db.queryAll<InventoryBalance>('inventory_balances');
   },
 
+  getBalance(warehouseId: string, itemId: string): number {
+    const balances = db.queryAll<InventoryBalance>('inventory_balances');
+    const b = balances.find((x) => x.warehouse_id === warehouseId && x.item_id === itemId);
+    return b ? Number(b.quantity || 0) : 0;
+  },
+
   getTransactions(): InventoryTransaction[] {
     return db.queryAll<InventoryTransaction>('inventory_transactions');
   },
@@ -541,29 +548,25 @@ export const DocumentRepository = {
 
       // Auto-post sales / purchase invoices to General Accounting Ledger
       if (status === 'confirmed') {
-        try {
-          const isCash = doc.payment_status === 'cash' || doc.payment_status === 'paid';
-          if (doc.document_type === 'sales_invoice') {
-            AccountingEngine.postSalesInvoice(doc.business_id, {
-              id: doc.id,
-              date: doc.date,
-              party_id: doc.party_id,
-              grand_total: doc.grand_total,
-              is_cash: isCash,
-              number: doc.doc_number || doc.id.slice(0, 8),
-            });
-          } else if (doc.document_type === 'purchase_invoice') {
-            AccountingEngine.postPurchaseInvoice(doc.business_id, {
-              id: doc.id,
-              date: doc.date,
-              party_id: doc.party_id,
-              grand_total: doc.grand_total,
-              is_cash: isCash,
-              number: doc.doc_number || doc.id.slice(0, 8),
-            });
-          }
-        } catch (ae) {
-          console.error('Accounting auto-posting failed for document status update:', ae);
+        const isCash = doc.payment_status === 'cash' || doc.payment_status === 'paid';
+        if (doc.document_type === 'sales_invoice') {
+          AccountingEngine.postSalesInvoice(doc.business_id, {
+            id: doc.id,
+            date: doc.date,
+            party_id: doc.party_id,
+            grand_total: doc.grand_total,
+            is_cash: isCash,
+            number: doc.doc_number || doc.id.slice(0, 8),
+          });
+        } else if (doc.document_type === 'purchase_invoice') {
+          AccountingEngine.postPurchaseInvoice(doc.business_id, {
+            id: doc.id,
+            date: doc.date,
+            party_id: doc.party_id,
+            grand_total: doc.grand_total,
+            is_cash: isCash,
+            number: doc.doc_number || doc.id.slice(0, 8),
+          });
         }
       }
 
@@ -605,23 +608,39 @@ export const SettingsRepository = {
 
 // 7. BackupRepository
 export const BackupRepository = {
-  exportBackup(): string {
-    const state = db.getState(); // Extract full SQLite relational state (all tables)
-    const serializedState = JSON.stringify(state);
+  /**
+   * Synchronous / async AES-GCM Encrypted Backup Export
+   */
+  async exportBackupSecure(passphrase?: string): Promise<string> {
+    const state = db.getState();
     const backupObj = {
       database: state,
       settings: db.queryAll<any>('settings'),
       metadata: {
-        version: 'v2.5',
+        version: 'v3.0-aes-gcm',
         timestamp: new Date().toISOString(),
-        checksum: this.calculateChecksum(serializedState),
+        exported_at: new Date().toISOString(),
+        business_count: state.businesses?.length || 0,
+      },
+    };
+    const serialized = JSON.stringify(backupObj);
+    return CryptoBackupEngine.encrypt(serialized, passphrase);
+  },
+
+  exportBackup(): string {
+    const state = db.getState(); // Extract full SQLite relational state (all tables)
+    const backupObj = {
+      database: state,
+      settings: db.queryAll<any>('settings'),
+      metadata: {
+        version: 'v3.0-aes-gcm',
+        timestamp: new Date().toISOString(),
+        checksum: this.calculateChecksum(JSON.stringify(state)),
       },
       encrypted: true,
     };
 
     const serialized = JSON.stringify(backupObj);
-    
-    // Chunked safe Base64 encoding for large datasets
     try {
       const codeUnits = new Uint8Array(new TextEncoder().encode(serialized));
       let binary = '';
@@ -633,6 +652,50 @@ export const BackupRepository = {
       return btoa(binary);
     } catch {
       return btoa(unescape(encodeURIComponent(serialized)));
+    }
+  },
+
+  /**
+   * Synchronous / async AES-GCM Encrypted Backup Restore with Atomic verification
+   */
+  async importBackupSecure(backupString: string, passphrase?: string): Promise<boolean> {
+    db.beginTransaction();
+    try {
+      const decryptedPlaintext = await CryptoBackupEngine.decrypt(backupString, passphrase);
+      const parsed = JSON.parse(decryptedPlaintext);
+
+      let stateToRestore = parsed.database || parsed;
+      
+      const tables: (keyof DBState)[] = [
+        'businesses', 'parties', 'items', 'categories', 'units', 'warehouses',
+        'inventory_balances', 'inventory_transactions', 'documents', 'document_items',
+        'settings', 'licenses', 'audit_logs', 'cash_accounts', 'payment_methods',
+        'treasury_transactions', 'receipts', 'payments', 'checks',
+        'accounts', 'accounting_periods', 'journal_entries', 'journal_lines',
+        'inventory_cost_layers', 'inventory_cost_movements', 'cogs_entries', 'inventory_revaluation_logs',
+        'notifications', 'notification_preferences', 'inventory_documents', 'inventory_document_items'
+      ];
+      
+      if (Array.isArray(stateToRestore)) {
+        const originalState = stateToRestore;
+        stateToRestore = {
+          businesses: originalState,
+        } as any;
+      }
+
+      tables.forEach((t) => {
+        if (!stateToRestore[t]) {
+          stateToRestore[t] = [];
+        }
+      });
+
+      db.restoreState(stateToRestore);
+      db.commit();
+      return true;
+    } catch (e) {
+      db.rollback();
+      console.error('Secure backup restoration failed', e);
+      throw e;
     }
   },
 
@@ -653,10 +716,9 @@ export const BackupRepository = {
 
       const parsed = JSON.parse(serialized);
 
-      if (parsed.metadata && parsed.metadata.version) {
-        let stateToRestore = parsed.database;
+      if (parsed.metadata || parsed.database) {
+        let stateToRestore = parsed.database || parsed;
         
-        // Handle cases where the imported backup doesn't have all required tables yet
         const tables: (keyof DBState)[] = [
           'businesses', 'parties', 'items', 'categories', 'units', 'warehouses',
           'inventory_balances', 'inventory_transactions', 'documents', 'document_items',
@@ -667,7 +729,6 @@ export const BackupRepository = {
           'notifications', 'notification_preferences', 'inventory_documents', 'inventory_document_items'
         ];
         
-        // Ensure stateToRestore is structured as a complete DBState object
         if (Array.isArray(stateToRestore)) {
           const originalState = stateToRestore;
           stateToRestore = {
@@ -705,4 +766,5 @@ export const BackupRepository = {
 };
 
 export * from './accountingRepository';
+export * from './treasuryRepository';
 

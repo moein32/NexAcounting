@@ -655,8 +655,17 @@ export const demoDataService = {
         'parties',
         'items',
         'categories',
+        'units',
         'warehouses',
         'inventory_balances',
+        'cash_accounts',
+        'payment_methods',
+        'treasury_transactions',
+        'audit_logs',
+        'notifications',
+        'notification_preferences',
+        'inventory_documents',
+        'inventory_document_items',
       ];
 
       demoTables.forEach((table) => {

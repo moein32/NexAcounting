@@ -234,17 +234,13 @@ export const ReceiptRepository = {
           });
 
           // Post to double-entry accounting engine automatically
-          try {
-            AccountingEngine.postReceipt(receipt.business_id, {
-              id: created.id,
-              date: (created.created_at || new Date().toISOString()).split('T')[0],
-              party_id: receipt.party_id,
-              amount: receipt.amount,
-              description: receipt.description || `دریافت وجه بابت رسید`,
-            });
-          } catch (ae) {
-            console.error('Accounting auto-posting failed for receipt:', ae);
-          }
+          AccountingEngine.postReceipt(receipt.business_id, {
+            id: created.id,
+            date: (created.created_at || new Date().toISOString()).split('T')[0],
+            party_id: receipt.party_id,
+            amount: receipt.amount,
+            description: receipt.description || `دریافت وجه بابت رسید`,
+          });
         }
       }
 
@@ -339,18 +335,14 @@ export const PaymentRepository = {
           });
 
           // Post to double-entry accounting engine automatically
-          try {
-            AccountingEngine.postPayment(payment.business_id, {
-              id: created.id,
-              date: (created.created_at || new Date().toISOString()).split('T')[0],
-              party_id: payment.party_id,
-              amount: payment.amount,
-              description: payment.description || `پرداخت وجه بابت سند`,
-              is_expense: payment.description?.includes('هزینه') || false,
-            });
-          } catch (ae) {
-            console.error('Accounting auto-posting failed for payment:', ae);
-          }
+          AccountingEngine.postPayment(payment.business_id, {
+            id: created.id,
+            date: (created.created_at || new Date().toISOString()).split('T')[0],
+            party_id: payment.party_id,
+            amount: payment.amount,
+            description: payment.description || `پرداخت وجه بابت سند`,
+            is_expense: payment.description?.includes('هزینه') || false,
+          });
         }
       }
 
@@ -467,25 +459,7 @@ export const CheckRepository = {
           });
 
           // Post Cleared Check to Accounting
-          try {
-            AccountingEngine.postClearedCheck(check.business_id, {
-              id: check.id,
-              check_number: check.check_number,
-              amount: check.amount,
-              type: check.type,
-              party_id: check.party_id,
-              date: new Date().toISOString().split('T')[0],
-            });
-          } catch (ae) {
-            console.error('Accounting auto-posting failed for cleared check:', ae);
-          }
-        }
-      }
-
-      // If status changed to returned
-      if (status === 'returned' && previousStatus !== 'returned') {
-        try {
-          AccountingEngine.postReturnedCheck(check.business_id, {
+          AccountingEngine.postClearedCheck(check.business_id, {
             id: check.id,
             check_number: check.check_number,
             amount: check.amount,
@@ -493,9 +467,19 @@ export const CheckRepository = {
             party_id: check.party_id,
             date: new Date().toISOString().split('T')[0],
           });
-        } catch (ae) {
-          console.error('Accounting auto-posting failed for returned check:', ae);
         }
+      }
+
+      // If status changed to returned
+      if (status === 'returned' && previousStatus !== 'returned') {
+        AccountingEngine.postReturnedCheck(check.business_id, {
+          id: check.id,
+          check_number: check.check_number,
+          amount: check.amount,
+          type: check.type,
+          party_id: check.party_id,
+          date: new Date().toISOString().split('T')[0],
+        });
       }
 
       db.commit();
