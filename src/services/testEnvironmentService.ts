@@ -1529,7 +1529,7 @@ export const testEnvironmentService = {
       // Delete from business-scoped tables
       for (const table of businessTables) {
         if (!(table in db.getState())) continue;
-        const records = db.queryAll<any>(table);
+        const records = db.queryAll<any>(table as keyof DBState);
         const toDelete = records.filter((r) => r.business_id === targetBusinessId);
         for (const row of toDelete) {
           db.deleteRecord(table as keyof DBState, row.id);
