@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { authService } from './authService';
 import { itemService } from './itemService';
 import { unitService } from './unitService';
+import { SettingsRepository } from '../repositories';
 import {
   Warehouse,
   WarehouseLocation,
@@ -245,21 +246,29 @@ export const inventoryService = {
   getNegativeStockPolicy(businessId: string): 'block' | 'warn' | 'allow' {
     const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}_policy`;
     try {
+      // Check SQLite settings first
+      const dbVal = SettingsRepository.get(settingKey) || SettingsRepository.get('inventory_negative_stock_policy');
+      if (dbVal === 'warn' || dbVal === 'allow' || dbVal === 'block') return dbVal;
+
       const val = localStorage.getItem(settingKey);
       if (val === 'warn' || val === 'allow' || val === 'block') return val;
+
       // Fallback check old boolean setting
       const oldVal = localStorage.getItem(`${STORAGE_KEYS.ALLOW_NEG}_${businessId}`);
       if (oldVal === 'true') return 'allow';
       if (oldVal === 'false') return 'block';
-      return 'allow'; // Default policy allows negative inventory for seamless sales document issuance
+
+      // Default policy is strictly BLOCK to maintain financial and inventory integrity
+      return 'block';
     } catch {
-      return 'allow';
+      return 'block';
     }
   },
 
   setNegativeStockPolicy(businessId: string, policy: 'block' | 'warn' | 'allow') {
     const settingKey = `${STORAGE_KEYS.ALLOW_NEG}_${businessId}_policy`;
     try {
+      SettingsRepository.set(settingKey, policy);
       localStorage.setItem(settingKey, policy);
       localStorage.setItem(`${STORAGE_KEYS.ALLOW_NEG}_${businessId}`, policy !== 'block' ? 'true' : 'false');
     } catch (e) {

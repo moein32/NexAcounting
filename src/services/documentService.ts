@@ -1135,6 +1135,27 @@ export const documentService = {
     }
 
     if (!isSupabaseConfigured()) {
+      // Reverse financial and costing implications first within a strict transaction
+      db.beginTransaction();
+      try {
+        if (doc.status === 'confirmed') {
+          // Reverse cost layers and COGS journal
+          CostEngine.handleCancellation(businessId, doc);
+
+          // Reverse main invoice accounting entry
+          const allEntries = db.queryAll<any>('journal_entries');
+          const mainEntry = allEntries.find((e) => e.reference_id === id && e.status === 'posted');
+          if (mainEntry) {
+            AccountingEngine.reverseEntry(mainEntry.id, businessId);
+          }
+        }
+        db.commit();
+      } catch (err: any) {
+        db.rollback();
+        console.error('Cancellation Cost/Accounting Reversal Error:', err);
+        throw new Error(`خطا در برگشت اثرات مالی و بهای تمام‌شده: ${err.message || 'عملیات متوقف شد.'}`);
+      }
+
       const docs = getFromStorage<Document>(STORAGE_KEYS.DOCUMENTS, INITIAL_DEMO_DOCUMENTS);
       const docIdx = docs.findIndex((d) => d.id === id && d.business_id === businessId);
       if (docIdx >= 0) {
@@ -1142,24 +1163,6 @@ export const documentService = {
         docs[docIdx].cancelled_by = currentUserId || 'demo_user_1';
         docs[docIdx].cancelled_at = new Date().toISOString();
         setToStorage(STORAGE_KEYS.DOCUMENTS, docs);
-      }
-
-      // Reverse financial and costing implications
-      db.beginTransaction();
-      try {
-        // Reverse cost layers and COGS journal
-        CostEngine.handleCancellation(businessId, doc);
-
-        // Reverse main invoice accounting entry
-        const allEntries = db.queryAll<any>('journal_entries');
-        const mainEntry = allEntries.find(e => e.reference_id === id && e.status === 'posted');
-        if (mainEntry) {
-          AccountingEngine.reverseEntry(mainEntry.id, businessId);
-        }
-        db.commit();
-      } catch (err: any) {
-        db.rollback();
-        console.error('Cancellation Cost/Accounting Reversal Error:', err);
       }
 
       await this.createDocumentEvent(

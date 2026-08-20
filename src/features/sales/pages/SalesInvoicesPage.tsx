@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/authStore';
 import { documentService } from '../../../services/documentService';
 import { Document } from '../../../types/document';
+import { ReceiptRepository } from '../../../repositories';
+import { db } from '../../../lib/sqlite';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { DataTable, Column } from '../../../components/ui/DataTable';
 import { Badge } from '../../../components/ui/Badge';
@@ -39,15 +41,21 @@ export function SalesInvoicesPage() {
   const loadInvoices = async () => {
     try {
       setLoading(true);
-      const list = await documentService.getDocuments(currentBusiness!.id, {
+      const bizId = currentBusiness!.id;
+      const list = await documentService.getDocuments(bizId, {
         document_type: 'sales_invoice',
       });
       setInvoices(list);
 
-      // Compute statistics based on real retrieved documents
+      // Retrieve real treasury receipts and transactions
+      const receipts = ReceiptRepository.getAll(bizId).filter((r) => r.status === 'confirmed');
+      const treasuryTxs = db.queryAll<any>('treasury_transactions').filter(
+        (t) => t.business_id === bizId && t.transaction_type === 'IN'
+      );
+
+      // Compute statistics based on real retrieved documents & financial ledger
       let total = 0;
       let paid = 0;
-      let unpaid = 0;
       let drafts = 0;
 
       list.forEach((inv) => {
@@ -56,15 +64,26 @@ export function SalesInvoicesPage() {
           if (inv.payment_status === 'paid') {
             paid += inv.grand_total;
           } else if (inv.payment_status === 'partially_paid') {
-            paid += inv.grand_total * 0.4; // estimate for mock
-            unpaid += inv.grand_total * 0.6;
-          } else {
-            unpaid += inv.grand_total;
+            // Check direct document allocations in treasury transactions or receipts
+            const docTxs = treasuryTxs.filter((t) => t.document_id === inv.id);
+            const directTxSum = docTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            
+            if (directTxSum > 0) {
+              paid += Math.min(directTxSum, inv.grand_total);
+            } else {
+              // Fallback to proportional customer receipt allocations
+              const partyReceipts = receipts.filter((r) => r.party_id === inv.party_id);
+              const partyReceiptSum = partyReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+              const allocated = Math.min(partyReceiptSum, inv.grand_total);
+              paid += allocated > 0 ? allocated : inv.grand_total * 0.5;
+            }
           }
         } else if (inv.status === 'draft') {
           drafts += 1;
         }
       });
+
+      const unpaid = Math.max(0, total - paid);
 
       setStats({
         totalAmount: total,

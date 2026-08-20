@@ -81,6 +81,13 @@ export const CostEngine = {
 
     if (!warehouseId) return;
 
+    // Idempotency check: prevent duplicate cost layers for the same document
+    const docItemIds = (doc.items || []).map((i: any) => i.id).filter(Boolean);
+    const existingLayers = db.queryAll<CostLayer>('inventory_cost_layers').filter(
+      (l) => (docItemIds.length > 0 && docItemIds.includes(l.document_item_id)) || l.document_item_id === doc.id
+    );
+    if (existingLayers.length > 0) return;
+
     doc.items.forEach((item: any) => {
       // Only process actual catalog items that represent physical goods
       const isProduct = this.checkIsProduct(businessId, item.item_id);
@@ -152,6 +159,10 @@ export const CostEngine = {
     if (!doc.items || doc.items.length === 0) return;
     const warehouseId = doc.warehouse_id;
     if (!warehouseId) return;
+
+    // Idempotency check: prevent duplicate COGS posting for the same sales invoice
+    const existingCogs = db.queryAll<CogsEntry>('cogs_entries').filter((c) => c.document_id === doc.id);
+    if (existingCogs.length > 0) return;
 
     let totalDocumentCOGS = 0;
 
@@ -257,14 +268,29 @@ export const CostEngine = {
   },
 
   /**
-   * Process a confirmed sales return to restore inventory cost.
+   * Process a confirmed sales return to restore inventory cost using actual historical cost.
    */
   handleSalesReturn(businessId: string, doc: any): void {
     if (!doc.items || doc.items.length === 0) return;
     const warehouseId = doc.warehouse_id;
     if (!warehouseId) return;
 
+    // Idempotency check: prevent duplicate processing
+    const existingCogs = db.queryAll<CogsEntry>('cogs_entries').filter((c) => c.document_id === doc.id);
+    if (existingCogs.length > 0) return;
+
     let totalReturnCOGSValue = 0;
+
+    // Check if linked to an original sales invoice to retrieve actual historical cost layers
+    let refDocItems: any[] = [];
+    let refCostMovements: CostMovement[] = [];
+    if (doc.reference_document_id) {
+      refDocItems = db.queryAll<any>('document_items').filter((di) => di.document_id === doc.reference_document_id);
+      const refItemIds = refDocItems.map((di) => di.id);
+      refCostMovements = db.queryAll<CostMovement>('inventory_cost_movements').filter(
+        (mv) => refItemIds.includes(mv.document_item_id) && mv.type === 'sales_issue'
+      );
+    }
 
     doc.items.forEach((item: any) => {
       const isProduct = this.checkIsProduct(businessId, item.item_id);
@@ -273,12 +299,37 @@ export const CostEngine = {
       const returnQty = Number(item.quantity);
       if (returnQty <= 0) return;
 
-      // Determine cost to restore:
-      // Try to find the cost of this item in the previous sales / layers.
-      // If we cannot find it, default to running average or fallback catalog purchase price.
-      const fallbackPrice = this.getItemFallbackPurchasePrice(businessId, item.item_id);
+      // 1. Retrieve the actual historical cost from the referenced sales document
+      let historicalUnitCost: number | null = null;
 
-      // Create a restored layer for this return
+      if (refCostMovements.length > 0) {
+        const matchingRefItems = refDocItems.filter((di) => di.item_id === item.item_id);
+        const matchingRefItemIds = matchingRefItems.map((di) => di.id);
+        const matchingMovements = refCostMovements.filter((mv) => matchingRefItemIds.includes(mv.document_item_id));
+
+        if (matchingMovements.length > 0) {
+          const totalRefCost = matchingMovements.reduce((sum, mv) => sum + mv.quantity * mv.unit_cost, 0);
+          const totalRefQty = matchingMovements.reduce((sum, mv) => sum + mv.quantity, 0);
+          if (totalRefQty > 0) {
+            historicalUnitCost = totalRefCost / totalRefQty;
+          }
+        }
+      }
+
+      // 2. If no direct reference movement, check product's weighted average cost in the warehouse
+      if (historicalUnitCost === null || historicalUnitCost <= 0) {
+        const val = this.getWarehouseProductValuation(businessId, warehouseId, item.item_id);
+        if (val.average_cost > 0) {
+          historicalUnitCost = val.average_cost;
+        }
+      }
+
+      // 3. Fallback to catalog purchase price if no inventory history exists
+      if (historicalUnitCost === null || historicalUnitCost <= 0) {
+        historicalUnitCost = this.getItemFallbackPurchasePrice(businessId, item.item_id);
+      }
+
+      // Create a restored layer for this return with the exact historical unit cost
       const restoredLayer: CostLayer = {
         id: `layer_ret_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
         business_id: businessId,
@@ -286,7 +337,7 @@ export const CostEngine = {
         warehouse_id: warehouseId,
         quantity: returnQty,
         remaining_quantity: returnQty,
-        unit_cost: fallbackPrice,
+        unit_cost: historicalUnitCost,
         document_item_id: item.id || `doc_item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -300,13 +351,13 @@ export const CostEngine = {
         document_item_id: item.id || `doc_item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         layer_id: restoredLayer.id,
         quantity: returnQty,
-        unit_cost: fallbackPrice,
+        unit_cost: historicalUnitCost,
         type: 'sales_return_restoration',
         created_at: new Date().toISOString(),
       };
       db.insertRecord('inventory_cost_movements', movement);
 
-      const itemCost = returnQty * fallbackPrice;
+      const itemCost = returnQty * historicalUnitCost;
       totalReturnCOGSValue += itemCost;
 
       // Register negative COGS Entry representing reversal
@@ -316,7 +367,7 @@ export const CostEngine = {
         document_id: doc.id,
         item_id: item.item_id,
         quantity: -returnQty,
-        unit_cost: fallbackPrice,
+        unit_cost: historicalUnitCost,
         total_cost: -itemCost,
         created_at: new Date().toISOString(),
       };
