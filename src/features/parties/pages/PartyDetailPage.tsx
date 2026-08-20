@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { partyService } from '../../../services/partyService';
+import { DocumentRepository } from '../../../repositories';
+import { ReceiptRepository, PaymentRepository, CheckRepository, Receipt, Payment, Check } from '../../../repositories/treasuryRepository';
+import { Document } from '../../../types/document';
 import { useAuthStore } from '../../../stores/authStore';
 import { Party, PartyLedgerEntry } from '../../../types/party';
 import { PartyTypeBadge, PartyRoleBadge } from '../components/PartyBadge';
@@ -15,7 +18,7 @@ import { LoadingState } from '../../../components/ui/LoadingState';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { showToast } from '../../../components/ui/Toast';
-import { formatCurrency } from '../../../lib/utils';
+import { formatCurrency, formatPersianDate } from '../../../lib/utils';
 import {
   User,
   Building2,
@@ -27,7 +30,7 @@ import {
   BookOpen,
   ShoppingBag,
   Truck,
-  Receipt,
+  Receipt as ReceiptIcon,
   Wallet,
   Edit,
   Power,
@@ -38,6 +41,7 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 
 export function PartyDetailPage() {
@@ -47,6 +51,11 @@ export function PartyDetailPage() {
 
   const [party, setParty] = useState<Party | null>(null);
   const [ledgerEntries, setLedgerEntries] = useState<PartyLedgerEntry[]>([]);
+  const [salesDocs, setSalesDocs] = useState<Document[]>([]);
+  const [purchaseDocs, setPurchaseDocs] = useState<Document[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [checks, setChecks] = useState<Check[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('overview');
 
@@ -62,8 +71,21 @@ export function PartyDetailPage() {
         const data = await partyService.getPartyById(currentBusiness.id, id);
         if (data) {
           setParty(data);
-          const entries = partyService.getPartyLedgerPlaceholder(data);
+          const entries = await partyService.getPartyLedger(currentBusiness.id, id);
           setLedgerEntries(entries);
+
+          const allDocs = DocumentRepository.getAll(currentBusiness.id);
+          setSalesDocs(allDocs.filter((d) => d.party_id === id && d.document_type.startsWith('sales_')));
+          setPurchaseDocs(allDocs.filter((d) => d.party_id === id && d.document_type.startsWith('purchase_')));
+
+          const allReceipts = ReceiptRepository.getAll(currentBusiness.id);
+          setReceipts(allReceipts.filter((r) => r.party_id === id));
+
+          const allPayments = PaymentRepository.getAll(currentBusiness.id);
+          setPayments(allPayments.filter((p) => p.party_id === id));
+
+          const allChecks = CheckRepository.getAll(currentBusiness.id);
+          setChecks(allChecks.filter((c) => c.party_id === id));
         }
       } catch (err: any) {
         showToast.error(err.message || 'خطا در دریافت اطلاعات طرف حساب');
@@ -122,12 +144,36 @@ export function PartyDetailPage() {
     { id: 'contacts', label: 'رابطین و مدیران', icon: <Phone className="w-4 h-4" />, badge: party.contacts?.length || 0 },
     { id: 'addresses', label: 'آدرس‌ها', icon: <MapPin className="w-4 h-4" />, badge: party.addresses?.length || 0 },
     { id: 'financial', label: 'تنظیمات مالی', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'ledger', label: 'دفتر معین (Ledger)', icon: <BookOpen className="w-4 h-4" /> },
-    { id: 'sales', label: 'فاکتورهای فروش', icon: <ShoppingBag className="w-4 h-4" /> },
-    { id: 'purchases', label: 'فاکتورهای خرید', icon: <Truck className="w-4 h-4" /> },
-    { id: 'payments', label: 'دریافت و پرداخت', icon: <Receipt className="w-4 h-4" /> },
-    { id: 'checks', label: 'چک‌ها', icon: <Wallet className="w-4 h-4" /> },
+    { id: 'ledger', label: 'دفتر معین (Ledger)', icon: <BookOpen className="w-4 h-4" />, badge: ledgerEntries.length },
+    { id: 'sales', label: 'فاکتورهای فروش', icon: <ShoppingBag className="w-4 h-4" />, badge: salesDocs.length },
+    { id: 'purchases', label: 'فاکتورهای خرید', icon: <Truck className="w-4 h-4" />, badge: purchaseDocs.length },
+    { id: 'payments', label: 'دریافت و پرداخت', icon: <ReceiptIcon className="w-4 h-4" />, badge: receipts.length + payments.length },
+    { id: 'checks', label: 'چک‌ها', icon: <Wallet className="w-4 h-4" />, badge: checks.length },
   ];
+
+  const getDocTypeLabel = (type: string) => {
+    switch (type) {
+      case 'sales_invoice': return 'فاکتور فروش';
+      case 'sales_quote': return 'پیش‌فاکتور فروش';
+      case 'sales_order': return 'سفارش فروش';
+      case 'sales_return': return 'برگشت از فروش';
+      case 'purchase_invoice': return 'فاکتور خرید';
+      case 'purchase_order': return 'سفارش خرید';
+      case 'purchase_return': return 'برگشت از خرید';
+      default: return type;
+    }
+  };
+
+  const getDocStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed': return <Badge variant="success">تأیید نهایی</Badge>;
+      case 'draft': return <Badge variant="neutral">پیش‌نویس</Badge>;
+      case 'cancelled': return <Badge variant="danger">باطل شده</Badge>;
+      default: return <Badge variant="primary">{status}</Badge>;
+    }
+  };
+
+  const currentTotalBalance = ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0;
 
   return (
     <div className="space-y-6">
@@ -514,13 +560,13 @@ export function PartyDetailPage() {
         </Card>
       )}
 
-      {/* TAB 5: LEDGER ARCHITECTURE */}
+      {/* TAB 5: REAL LEDGER */}
       {activeTab === 'ledger' && (
         <Card className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-blue-600" />
-              <span>گردش حساب و دفتر معین (Party Ledger Architecture)</span>
+              <span>گردش حساب و دفتر معین طرف حساب</span>
             </h3>
             <span className="text-xs text-slate-500">
               واحد پول: {currentBusiness?.currency}
@@ -530,65 +576,315 @@ export function PartyDetailPage() {
           <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs text-blue-900 dark:text-blue-200 flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-blue-600 shrink-0" />
             <span>
-              معماری دفتر معین طرف حساب به صورت خودکار آماده شده است. با صدور فاکتورهای فروش، خرید، اسناد خزانه و چک در فازهای بعدی، تمامی ردیف‌های بدهکار و بستانکار در اینجا تجمیع می‌گردند.
+              دفتر معین به صورت آنی از تمامی فاکتورهای فروش، خرید، دریافت‌ها، پرداخت‌ها و چک‌ها محاسبه گردیده و مانده تراز را نشان می‌دهد.
             </span>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell isHeader>تاریخ</TableCell>
-                <TableCell isHeader>نوع سند</TableCell>
-                <TableCell isHeader>شماره عطف</TableCell>
-                <TableCell isHeader>شرح تراکنش</TableCell>
-                <TableCell isHeader>بدهکار (+)</TableCell>
-                <TableCell isHeader>بستانکار (-)</TableCell>
-                <TableCell isHeader>مانده (تراز)</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ledgerEntries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="font-mono text-xs">{entry.date}</TableCell>
-                  <TableCell>
-                    <Badge variant="neutral" size="sm">
-                      {entry.reference_number}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{entry.reference_id}</TableCell>
-                  <TableCell className="text-xs">{entry.description}</TableCell>
-                  <TableCell className="font-mono font-bold text-rose-600">
-                    {entry.debit > 0 ? formatCurrency(entry.debit, '') : '—'}
-                  </TableCell>
-                  <TableCell className="font-mono font-bold text-emerald-600">
-                    {entry.credit > 0 ? formatCurrency(entry.credit, '') : '—'}
-                  </TableCell>
-                  <TableCell className="font-mono font-bold">
-                    {formatCurrency(Math.abs(entry.balance), '')} ({entry.balance >= 0 ? 'بدهکار' : 'بستانکار'})
-                  </TableCell>
+          {ledgerEntries.length === 0 ? (
+            <EmptyState
+              title="هیچ تراکنشی برای این طرف حساب ثبت نشده است"
+              description="با ثبت فاکتور، پرداخت یا دریافت وجه، گردش حساب طرف حساب در اینجا نمایش داده می‌شود."
+              icon={<BookOpen className="w-8 h-8 text-slate-400" />}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader>تاریخ</TableCell>
+                  <TableCell isHeader>شماره عطف</TableCell>
+                  <TableCell isHeader>شرح تراکنش</TableCell>
+                  <TableCell isHeader>بدهکار (+)</TableCell>
+                  <TableCell isHeader>بستانکار (-)</TableCell>
+                  <TableCell isHeader>مانده (تراز)</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {ledgerEntries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-mono text-xs">{entry.date}</TableCell>
+                    <TableCell>
+                      <Badge variant="neutral" size="sm">
+                        {entry.reference_number}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{entry.description}</TableCell>
+                    <TableCell className="font-mono font-bold text-rose-600">
+                      {entry.debit > 0 ? formatCurrency(entry.debit, '') : '—'}
+                    </TableCell>
+                    <TableCell className="font-mono font-bold text-emerald-600">
+                      {entry.credit > 0 ? formatCurrency(entry.credit, '') : '—'}
+                    </TableCell>
+                    <TableCell className="font-mono font-bold">
+                      {formatCurrency(Math.abs(entry.balance), '')} ({entry.balance > 0 ? 'بدهکار' : entry.balance < 0 ? 'بستانکار' : 'تسویه'})
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </Card>
       )}
 
-      {/* TABS 6-9: PLACEHOLDERS FOR SALES, PURCHASES, PAYMENTS, CHECKS */}
-      {['sales', 'purchases', 'payments', 'checks'].includes(activeTab) && (
-        <Card className="p-8">
-          <EmptyState
-            title={`ماژول ${
-              activeTab === 'sales'
-                ? 'فاکتورهای فروش'
-                : activeTab === 'purchases'
-                ? 'فاکتورهای خرید'
-                : activeTab === 'payments'
-                ? 'دریافت و پرداخت‌های خزانه'
-                : 'چک‌های دریافتی و پرداختی'
-            }`}
-            description="این تب آماده اتصال به موتور عملیاتی در فاز مربوطه می‌باشد."
-            icon={<Clock className="w-10 h-10 text-slate-400" />}
-          />
+      {/* TAB 6: SALES */}
+      {activeTab === 'sales' && (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-blue-600" />
+              <span>فاکتورها و پیش‌فاکتورهای فروش</span>
+            </h3>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate(`/sales/new?partyId=${party.id}`)}
+            >
+              صدور فاکتور جدید
+            </Button>
+          </div>
+
+          {salesDocs.length === 0 ? (
+            <EmptyState
+              title="هیچ فاکتور فروشی برای این مشتری ثبت نشده است"
+              description="جهت صدور فاکتور یا پیش‌فاکتور فروش برای این طرف حساب، از دکمه بالا استفاده نمایید."
+              icon={<ShoppingBag className="w-8 h-8 text-slate-400" />}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader>شماره سند</TableCell>
+                  <TableCell isHeader>نوع سند</TableCell>
+                  <TableCell isHeader>تاریخ</TableCell>
+                  <TableCell isHeader>مبلغ کل</TableCell>
+                  <TableCell isHeader>وضعیت</TableCell>
+                  <TableCell isHeader>عملیات</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {salesDocs.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-mono font-bold text-xs">{doc.document_number}</TableCell>
+                    <TableCell>{getDocTypeLabel(doc.document_type)}</TableCell>
+                    <TableCell className="font-mono text-xs">{doc.document_date ? doc.document_date.split('T')[0] : '—'}</TableCell>
+                    <TableCell className="font-mono font-bold text-xs">{formatCurrency(doc.grand_total, currentBusiness?.currency)}</TableCell>
+                    <TableCell>{getDocStatusBadge(doc.status)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<ExternalLink className="w-3.5 h-3.5" />}
+                        onClick={() => navigate(`/sales/${doc.id}`)}
+                      >
+                        مشاهده
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* TAB 7: PURCHASES */}
+      {activeTab === 'purchases' && (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Truck className="w-4 h-4 text-blue-600" />
+              <span>فاکتورها و سفارشات خرید</span>
+            </h3>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate(`/purchases/new?partyId=${party.id}`)}
+            >
+              ثبت فاکتور خرید جدید
+            </Button>
+          </div>
+
+          {purchaseDocs.length === 0 ? (
+            <EmptyState
+              title="هیچ فاکتور خریدی برای این تامین‌کننده ثبت نشده است"
+              description="جهت ثبت فاکتور یا سفارش خرید از این طرف حساب، از دکمه بالا استفاده نمایید."
+              icon={<Truck className="w-8 h-8 text-slate-400" />}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader>شماره سند</TableCell>
+                  <TableCell isHeader>نوع سند</TableCell>
+                  <TableCell isHeader>تاریخ</TableCell>
+                  <TableCell isHeader>مبلغ کل</TableCell>
+                  <TableCell isHeader>وضعیت</TableCell>
+                  <TableCell isHeader>عملیات</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchaseDocs.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-mono font-bold text-xs">{doc.document_number}</TableCell>
+                    <TableCell>{getDocTypeLabel(doc.document_type)}</TableCell>
+                    <TableCell className="font-mono text-xs">{doc.document_date ? doc.document_date.split('T')[0] : '—'}</TableCell>
+                    <TableCell className="font-mono font-bold text-xs">{formatCurrency(doc.grand_total, currentBusiness?.currency)}</TableCell>
+                    <TableCell>{getDocStatusBadge(doc.status)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<ExternalLink className="w-3.5 h-3.5" />}
+                        onClick={() => navigate(`/purchases/${doc.id}`)}
+                      >
+                        مشاهده
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* TAB 8: PAYMENTS & RECEIPTS */}
+      {activeTab === 'payments' && (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <ReceiptIcon className="w-4 h-4 text-blue-600" />
+              <span>دریافت‌ها و پرداخت‌های نقدی و بانکی</span>
+            </h3>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/treasury/receipts')}>
+                مدیریت دریافت‌ها
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/treasury/payments')}>
+                مدیریت پرداخت‌ها
+              </Button>
+            </div>
+          </div>
+
+          {receipts.length === 0 && payments.length === 0 ? (
+            <EmptyState
+              title="هیچ دریافت یا پرداختی ثبت نشده است"
+              description="سوابق دریافت وجه از مشتری یا پرداخت وجه به تامین‌کننده در این بخش نمایش داده می‌شوند."
+              icon={<ReceiptIcon className="w-8 h-8 text-slate-400" />}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader>نوع تراکنش</TableCell>
+                  <TableCell isHeader>تاریخ</TableCell>
+                  <TableCell isHeader>مبلغ</TableCell>
+                  <TableCell isHeader>شرح</TableCell>
+                  <TableCell isHeader>وضعیت</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receipts.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <Badge variant="success">دریافت وجه (نقد/بانک)</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{r.receipt_date || (r.created_at ? r.created_at.split('T')[0] : '—')}</TableCell>
+                    <TableCell className="font-mono font-bold text-xs text-emerald-600">{formatCurrency(r.amount, currentBusiness?.currency)}</TableCell>
+                    <TableCell className="text-xs">{r.description || 'دریافت وجه'}</TableCell>
+                    <TableCell><Badge variant="success">ثبت شده</Badge></TableCell>
+                  </TableRow>
+                ))}
+                {payments.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <Badge variant="warning">پرداخت وجه</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{p.payment_date || (p.created_at ? p.created_at.split('T')[0] : '—')}</TableCell>
+                    <TableCell className="font-mono font-bold text-xs text-rose-600">{formatCurrency(p.amount, currentBusiness?.currency)}</TableCell>
+                    <TableCell className="text-xs">{p.description || 'پرداخت وجه'}</TableCell>
+                    <TableCell><Badge variant="success">ثبت شده</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* TAB 9: CHECKS */}
+      {activeTab === 'checks' && (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-blue-600" />
+              <span>چک‌های دریافتی و پرداختی</span>
+            </h3>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/checks/received')}>
+                چک‌های دریافتی
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/checks/issued')}>
+                چک‌های صیادی پرداختی
+              </Button>
+            </div>
+          </div>
+
+          {checks.length === 0 ? (
+            <EmptyState
+              title="هیچ چکی برای این طرف حساب ثبت نشده است"
+              description="چک‌های دریافتی از مشتری یا چک‌های صادره به تامین‌کننده در این بخش لیست می‌شوند."
+              icon={<Wallet className="w-8 h-8 text-slate-400" />}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader>شماره چک</TableCell>
+                  <TableCell isHeader>نوع</TableCell>
+                  <TableCell isHeader>بانک</TableCell>
+                  <TableCell isHeader>مبلغ</TableCell>
+                  <TableCell isHeader>تاریخ سررسید</TableCell>
+                  <TableCell isHeader>وضعیت</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {checks.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono font-bold text-xs">{c.check_number}</TableCell>
+                    <TableCell>
+                      <Badge variant={c.type === 'received' ? 'primary' : 'warning'}>
+                        {c.type === 'received' ? 'دریافتی' : 'پرداختی'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{c.bank_name}</TableCell>
+                    <TableCell className="font-mono font-bold text-xs">{formatCurrency(c.amount, currentBusiness?.currency)}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.due_date || c.issue_date || '—'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          c.status === 'cleared'
+                            ? 'success'
+                            : c.status === 'returned'
+                            ? 'danger'
+                            : c.status === 'pending'
+                            ? 'warning'
+                            : 'neutral'
+                        }
+                      >
+                        {c.status === 'cleared'
+                          ? 'پاس شده'
+                          : c.status === 'returned'
+                          ? 'برگشتی'
+                          : c.status === 'pending'
+                          ? 'در جریان وصول'
+                          : 'باطل شده'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </Card>
       )}
 

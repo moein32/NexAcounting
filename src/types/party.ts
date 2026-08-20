@@ -119,7 +119,9 @@ export interface PartyLedgerEntry {
   date: string;
   reference_type:
     | 'sales_invoice'
+    | 'sales_return'
     | 'purchase_invoice'
+    | 'purchase_return'
     | 'receipt'
     | 'payment'
     | 'check'

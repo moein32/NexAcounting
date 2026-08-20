@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { authService } from './authService';
+import { db } from '../lib/sqlite';
+import { ReceiptRepository, PaymentRepository, CheckRepository } from '../repositories/treasuryRepository';
 import {
   Party,
   PartyType,
@@ -980,5 +982,199 @@ export const partyService = {
     }
 
     return entries;
+  },
+
+  // Compute full real Party Ledger with running balance across all transactions
+  async getPartyLedger(businessId: string, partyId: string): Promise<PartyLedgerEntry[]> {
+    const party = await this.getPartyById(businessId, partyId);
+    if (!party) return [];
+
+    const rawEntries: {
+      id: string;
+      date: string;
+      reference_type: string;
+      reference_id: string;
+      reference_number: string;
+      description: string;
+      debit: number;
+      credit: number;
+    }[] = [];
+
+    // 1. Opening Balance
+    if (party.financial_profile && party.financial_profile.opening_balance > 0) {
+      const isDebit = party.financial_profile.opening_balance_type === 'debit';
+      const amt = party.financial_profile.opening_balance;
+      rawEntries.push({
+        id: `ob_${party.id}`,
+        date: (party.created_at || new Date().toISOString()).split('T')[0],
+        reference_type: 'opening_balance',
+        reference_id: party.financial_profile.id || 'ob_1',
+        reference_number: 'سند افتتاحیه',
+        description: 'مانده اولیه ثبت شده در سیستم',
+        debit: isDebit ? amt : 0,
+        credit: !isDebit ? amt : 0,
+      });
+    }
+
+    // 2. Sales & Purchases Documents from localStorage demo / SQLite
+    try {
+      const docsKey = 'nex_demo_documents_data';
+      const storedDocsStr = localStorage.getItem(docsKey);
+      const storedDocs: any[] = storedDocsStr ? JSON.parse(storedDocsStr) : [];
+      const sqliteDocs = db.queryByBusiness<any>('documents', businessId);
+      
+      const allDocsMap = new Map<string, any>();
+      [...storedDocs, ...sqliteDocs].forEach((d) => {
+        if (d && d.id && d.business_id === businessId && d.party_id === partyId && d.status === 'confirmed') {
+          allDocsMap.set(d.id, d);
+        }
+      });
+
+      allDocsMap.forEach((doc) => {
+        const docDate = (doc.document_date || doc.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0];
+        if (doc.document_type === 'sales_invoice') {
+          // Customer is debited (+)
+          rawEntries.push({
+            id: `doc_${doc.id}`,
+            date: docDate,
+            reference_type: 'sales_invoice',
+            reference_id: doc.id,
+            reference_number: doc.document_number || 'SI',
+            description: `فاکتور فروش شماره ${doc.document_number}${doc.notes ? ' - ' + doc.notes : ''}`,
+            debit: Number(doc.grand_total || 0),
+            credit: 0,
+          });
+        } else if (doc.document_type === 'sales_return') {
+          // Customer is credited (-)
+          rawEntries.push({
+            id: `doc_${doc.id}`,
+            date: docDate,
+            reference_type: 'sales_return',
+            reference_id: doc.id,
+            reference_number: doc.document_number || 'SR',
+            description: `برگشت از فروش شماره ${doc.document_number}`,
+            debit: 0,
+            credit: Number(doc.grand_total || 0),
+          });
+        } else if (doc.document_type === 'purchase_invoice') {
+          // Supplier is credited (-)
+          rawEntries.push({
+            id: `doc_${doc.id}`,
+            date: docDate,
+            reference_type: 'purchase_invoice',
+            reference_id: doc.id,
+            reference_number: doc.document_number || 'PI',
+            description: `فاکتور خرید شماره ${doc.document_number}${doc.notes ? ' - ' + doc.notes : ''}`,
+            debit: 0,
+            credit: Number(doc.grand_total || 0),
+          });
+        } else if (doc.document_type === 'purchase_return') {
+          // Supplier is debited (+)
+          rawEntries.push({
+            id: `doc_${doc.id}`,
+            date: docDate,
+            reference_type: 'purchase_return',
+            reference_id: doc.id,
+            reference_number: doc.document_number || 'PR',
+            description: `برگشت از خرید شماره ${doc.document_number}`,
+            debit: Number(doc.grand_total || 0),
+            credit: 0,
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching documents for party ledger:', e);
+    }
+
+    // 3. Treasury Receipts & Payments
+    try {
+      const receipts = ReceiptRepository.getAll(businessId).filter((r) => r.party_id === partyId && r.status === 'confirmed');
+      receipts.forEach((r) => {
+        rawEntries.push({
+          id: `rcpt_${r.id}`,
+          date: (r.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+          reference_type: 'receipt',
+          reference_id: r.id,
+          reference_number: r.reference_number || 'دریافت وجه',
+          description: r.description || `دریافت وجه بابت تسویه فاکتور/مطالبات`,
+          debit: 0,
+          credit: Number(r.amount || 0),
+        });
+      });
+
+      const payments = PaymentRepository.getAll(businessId).filter((p) => p.party_id === partyId && p.status === 'confirmed');
+      payments.forEach((p) => {
+        rawEntries.push({
+          id: `pay_${p.id}`,
+          date: (p.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+          reference_type: 'payment',
+          reference_id: p.id,
+          reference_number: p.reference_number || 'پرداخت وجه',
+          description: p.description || `پرداخت وجه بابت تسویه بدهی/فاکتور`,
+          debit: Number(p.amount || 0),
+          credit: 0,
+        });
+      });
+    } catch (e) {
+      console.error('Error fetching treasury for party ledger:', e);
+    }
+
+    // 4. Checks
+    try {
+      const checks = CheckRepository.getAll(businessId).filter((c) => c.party_id === partyId && c.status !== 'cancelled');
+      checks.forEach((c) => {
+        const checkDate = c.due_date || c.issue_date || new Date().toISOString().split('T')[0];
+        if (c.type === 'received') {
+          // Received check reduces customer debit (credit party)
+          rawEntries.push({
+            id: `chk_${c.id}`,
+            date: checkDate,
+            reference_type: 'check',
+            reference_id: c.id,
+            reference_number: `چک ${c.check_number}`,
+            description: `دریافت چک شماره ${c.check_number} بانک ${c.bank_name} (${c.status === 'cleared' ? 'پاس‌شده' : c.status === 'returned' ? 'برگشتی' : 'در جریان وصول'})`,
+            debit: 0,
+            credit: Number(c.amount || 0),
+          });
+        } else {
+          // Issued check reduces supplier credit (debit party)
+          rawEntries.push({
+            id: `chk_${c.id}`,
+            date: checkDate,
+            reference_type: 'check',
+            reference_id: c.id,
+            reference_number: `چک ${c.check_number}`,
+            description: `صدور چک شماره ${c.check_number} عهده بانک ${c.bank_name} (${c.status === 'cleared' ? 'پاس‌شده' : c.status === 'returned' ? 'برگشتی' : 'در جریان وصول'})`,
+            debit: Number(c.amount || 0),
+            credit: 0,
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching checks for party ledger:', e);
+    }
+
+    // 5. Sort chronologically by date
+    rawEntries.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    // 6. Compute running balance
+    let runningBalance = 0;
+    const ledger: PartyLedgerEntry[] = rawEntries.map((re) => {
+      runningBalance = runningBalance + re.debit - re.credit;
+      return {
+        id: re.id,
+        party_id: partyId,
+        date: re.date,
+        reference_type: re.reference_type as PartyLedgerEntry['reference_type'],
+        reference_id: re.reference_id,
+        reference_number: re.reference_number,
+        description: re.description,
+        debit: re.debit,
+        credit: re.credit,
+        balance: runningBalance,
+      };
+    });
+
+    return ledger;
   },
 };
