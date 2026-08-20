@@ -11,7 +11,7 @@
  * 4. Resets are atomic and strictly preserve all real user business data.
  */
 
-import { db } from '../lib/sqlite';
+import { db, DBState } from '../lib/sqlite';
 import { documentService } from './documentService';
 import { inventoryService } from './inventoryService';
 import { AccountingEngine } from './accountingEngine';
@@ -114,35 +114,33 @@ export const testEnvironmentService = {
   /**
    * Generates a complete, authentic test environment with full lifecycle scenarios.
    */
-  async createRealTestData(targetBusinessId: string = 'biz_main'): Promise<{
+  async createRealTestData(): Promise<{
     success: boolean;
     session_id: string;
+    targetBusinessId: string;
     summary: TestEnvironmentSummary;
   }> {
     const startTime = performance.now();
     const sessionId = 'TEST_ENV_' + Date.now().toString(36);
+    const targetBusinessId = 'TEST_BIZ_' + Date.now();
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    // Ensure chart of accounts and business setup
-    AccountRepository.getAccounts(targetBusinessId);
-    let business = db.queryAll<any>('businesses').find((b) => b.id === targetBusinessId);
-    if (!business) {
-      business = db.insertRecord('businesses', {
-        id: targetBusinessId,
-        name: 'کسب‌وکار آزمایشی نکس‌جیب (محیط تست)',
-        code: 'NX-TEST-ENV',
-        currency: 'تومان',
-        fiscal_year: '۱۴۰۳',
-        is_active: true,
-        is_demo: 1,
-        demo_session_id: sessionId,
-      });
-    }
+    // Create the independent Test Business
+    const business = db.insertRecord('businesses', {
+      id: targetBusinessId,
+      name: 'کسب‌وکار آزمایشی نکس‌جیب (محیط تست - ' + sessionId + ')',
+      code: 'NX-TEST-ENV-' + Date.now().toString().slice(-4),
+      currency: 'تومان',
+      fiscal_year: '۱۴۰۳',
+      is_active: true,
+      is_demo: 1,
+      demo_session_id: sessionId,
+    }) as any;
 
     // Set costing method to FIFO for deterministic test verification
-    SettingsRepository.set('inventory_cost_method', 'fifo');
-    SettingsRepository.set('inventory_negative_stock_policy', 'warn');
+    SettingsRepository.set(targetBusinessId + '_inventory_cost_method', 'fifo');
+    SettingsRepository.set(targetBusinessId + '_inventory_negative_stock_policy', 'warn');
 
     // 1. PARTIES (Customers & Suppliers)
     const customer1 = PartyRepository.create({
@@ -930,7 +928,7 @@ export const testEnvironmentService = {
     const summary: TestEnvironmentSummary = {
       session_id: sessionId,
       business_id: targetBusinessId,
-      business_name: business.name,
+      business_name: (business as any).name,
       timestamp: new Date().toISOString(),
       customers_count: 2,
       suppliers_count: 2,
@@ -959,6 +957,7 @@ export const testEnvironmentService = {
     return {
       success: true,
       session_id: sessionId,
+      targetBusinessId,
       summary,
     };
   },
@@ -1507,68 +1506,34 @@ export const testEnvironmentService = {
   },
 
   /**
-   * Safely deletes only test/demo records, leaving real user data completely intact.
+   * Resets and completely deletes the specified Test Business and all related data.
    */
-  async resetTestData(targetBusinessId?: string): Promise<{ success: boolean; deletedCount: number }> {
-    db.beginTransaction();
-    try {
-      let deletedCount = 0;
-      const state = db.getState();
+  async resetTestData(targetBusinessId: string): Promise<{ deletedCount: number }> {
+    let deletedCount = 0;
 
-      const testTables: (keyof typeof state)[] = [
-        'documents',
-        'document_items',
-        'inventory_transactions',
-        'inventory_cost_layers',
-        'inventory_cost_movements',
-        'cogs_entries',
-        'journal_entries',
-        'journal_lines',
-        'receipts',
-        'payments',
-        'checks',
-        'parties',
-        'items',
-        'categories',
-        'warehouses',
-        'inventory_balances',
-        'cash_accounts',
-        'treasury_transactions',
-        'inventory_documents',
-        'inventory_document_items',
-      ];
+    // Define tables with business_id
+    const tables: (keyof DBState)[] = [
+      'parties', 'items', 'categories', 'documents', 'document_items',
+      'inventory_documents', 'inventory_transactions', 'inventory_cost_layers',
+      'cogs_entries', 'receipts', 'payments', 'checks', 'treasury_transactions',
+      'warehouses', 'units', 'settings'
+    ];
 
-      testTables.forEach((table) => {
-        const rows = state[table] as any[];
-        if (rows && rows.length > 0) {
-          const initialLen = rows.length;
-          const filtered = rows.filter((r) => {
-            if (targetBusinessId && r.business_id && r.business_id !== targetBusinessId) {
-              return true;
-            }
-            const isTestMarker =
-              r.is_demo === 1 ||
-              (r.demo_session_id &&
-                (String(r.demo_session_id).startsWith('TEST_ENV_') ||
-                  String(r.demo_session_id).startsWith('demo_session_') ||
-                  String(r.demo_session_id).startsWith('test_e2e_') ||
-                  String(r.demo_session_id).startsWith('TEST_REPORT_')));
-
-            return !isTestMarker;
-          });
-          deletedCount += initialLen - filtered.length;
-          (state[table] as any[]) = filtered;
-        }
-      });
-
-      db.restoreState(state);
-      db.commit();
-      return { success: true, deletedCount };
-    } catch (error) {
-      db.rollback();
-      console.error('Failed to reset test data:', error);
-      throw error;
+    // Delete records for this business
+    for (const table of tables) {
+      if (!(table in db.getState())) continue;
+      const records = db.queryAll<any>(table);
+      const toDelete = records.filter((r: any) => r.business_id === targetBusinessId);
+      for (const row of toDelete) {
+        db.deleteRecord(table, row.id);
+        deletedCount++;
+      }
     }
+
+    // Finally delete the business record
+    db.deleteRecord('businesses', targetBusinessId);
+
+    return { deletedCount };
   },
 
   /**

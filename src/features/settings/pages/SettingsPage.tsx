@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
@@ -193,8 +193,13 @@ export function SettingsPage() {
   const [isRunningTestEnvSuite, setIsRunningTestEnvSuite] = useState(false);
   const [testEnvReport, setTestEnvReport] = useState<TestEnvironmentReport | null>(null);
   const [liveStats, setLiveStats] = useState<LiveDbStats | null>(() =>
-    testEnvironmentService.getLiveStats(currentBusiness.id)
+    testEnvironmentService.getLiveStats(testEnvSummary?.business_id || currentBusiness.id)
   );
+
+  // Update liveStats when testEnvSummary changes
+  useEffect(() => {
+    setLiveStats(testEnvironmentService.getLiveStats(testEnvSummary?.business_id || currentBusiness.id));
+  }, [testEnvSummary, currentBusiness.id]);
 
   const tabs: { id: SettingTab; label: string; icon: React.ReactNode }[] = [
     { id: 'business', label: 'کسب‌وکار', icon: <Building2 className="w-4 h-4" /> },
@@ -229,12 +234,11 @@ export function SettingsPage() {
   const handleCreateRealTestEnv = async () => {
     setIsGeneratingTestEnv(true);
     try {
-      const res = await testEnvironmentService.createRealTestData(currentBusiness.id);
+      const res = await testEnvironmentService.createRealTestData();
       setTestEnvSummary(res.summary);
-      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: 'success',
-        message: `محیط تست واقعی با موفقیت ایجاد گردید (${res.session_id}). کلیه جریان‌های FIFO، اسناد مالی، انبار و خزانه‌داری مستقر شدند.`,
+        message: `محیط تست واقعی با موفقیت ایجاد گردید (${res.session_id}).`,
       });
     } catch (e: any) {
       setBackupStatus({
@@ -247,11 +251,11 @@ export function SettingsPage() {
   };
 
   const handleRunTestEnvSuite = async () => {
+    if (!testEnvSummary) return;
     setIsRunningTestEnvSuite(true);
     try {
-      const report = await testEnvironmentService.runIntegrityTestSuite(currentBusiness.id);
+      const report = await testEnvironmentService.runIntegrityTestSuite(testEnvSummary.business_id);
       setTestEnvReport(report);
-      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: report.overallStatus === 'PASS' ? 'success' : 'error',
         message:
@@ -270,22 +274,20 @@ export function SettingsPage() {
   };
 
   const handleResetDemoData = async () => {
+    if (!testEnvSummary) return;
     setIsResettingDemo(true);
     try {
-      const res = await testEnvironmentService.resetTestData(currentBusiness.id);
-      setDemoSummary(null);
+      await testEnvironmentService.resetTestData(testEnvSummary.business_id);
       setTestEnvSummary(null);
       setTestEnvReport(null);
-      setDiagnosticReport(null);
-      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: 'success',
-        message: `داده‌های تستی پاکسازی شدند (${res.deletedCount} رکورد حذف شد و اطلاعات واقعی حفظ گردید).`,
+        message: `محیط تست پاکسازی شد.`,
       });
     } catch (e: any) {
       setBackupStatus({
         type: 'error',
-        message: 'خطا در بازنشانی داده‌های تستی: ' + e.message,
+        message: 'خطا در پاکسازی محیط تست: ' + e.message,
       });
     } finally {
       setIsResettingDemo(false);
