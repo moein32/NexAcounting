@@ -139,8 +139,8 @@ export const testEnvironmentService = {
     }) as any;
 
     // Set costing method to FIFO for deterministic test verification
-    SettingsRepository.set(targetBusinessId + '_inventory_cost_method', 'fifo');
-    SettingsRepository.set(targetBusinessId + '_inventory_negative_stock_policy', 'warn');
+    SettingsRepository.set('inventory_cost_method', 'fifo', targetBusinessId);
+    SettingsRepository.set('inventory_negative_stock_policy', 'warn', targetBusinessId);
 
     // 1. PARTIES (Customers & Suppliers)
     const customer1 = PartyRepository.create({
@@ -1509,31 +1509,70 @@ export const testEnvironmentService = {
    * Resets and completely deletes the specified Test Business and all related data.
    */
   async resetTestData(targetBusinessId: string): Promise<{ deletedCount: number }> {
-    let deletedCount = 0;
+    db.beginTransaction();
+    try {
+      let deletedCount = 0;
 
-    // Define tables with business_id
-    const tables: (keyof DBState)[] = [
-      'parties', 'items', 'categories', 'documents', 'document_items',
-      'inventory_documents', 'inventory_transactions', 'inventory_cost_layers',
-      'cogs_entries', 'receipts', 'payments', 'checks', 'treasury_transactions',
-      'warehouses', 'units', 'settings'
-    ];
+      // Identify documents/journals for this business
+      const docs = db.queryByBusiness<any>('documents', targetBusinessId);
+      const docIds = new Set(docs.map((d) => d.id));
+      
+      const journals = db.queryByBusiness<any>('journal_entries', targetBusinessId);
+      const journalIds = new Set(journals.map((j) => j.id));
 
-    // Delete records for this business
-    for (const table of tables) {
-      if (!(table in db.getState())) continue;
-      const records = db.queryAll<any>(table);
-      const toDelete = records.filter((r: any) => r.business_id === targetBusinessId);
-      for (const row of toDelete) {
-        db.deleteRecord(table, row.id);
+      const businessTables: (keyof DBState)[] = [
+        'parties', 'items', 'categories', 'units', 'warehouses', 'documents',
+        'receipts', 'payments', 'checks', 'treasury_transactions',
+        'journal_entries', 'accounting_periods'
+      ];
+
+      // Delete from business-scoped tables
+      for (const table of businessTables) {
+        if (!(table in db.getState())) continue;
+        const records = db.queryAll<any>(table);
+        const toDelete = records.filter((r) => r.business_id === targetBusinessId);
+        for (const row of toDelete) {
+          db.deleteRecord(table as keyof DBState, row.id);
+          deletedCount++;
+        }
+      }
+
+      // Delete child records
+      const childTables: { table: keyof DBState; parentField: string; parentSet: Set<string> }[] = [
+        { table: 'document_items', parentField: 'document_id', parentSet: docIds },
+        { table: 'inventory_transactions', parentField: 'document_id', parentSet: docIds },
+        { table: 'inventory_cost_layers', parentField: 'business_id', parentSet: new Set([targetBusinessId]) },
+        { table: 'journal_lines', parentField: 'journal_id', parentSet: journalIds },
+        { table: 'inventory_documents', parentField: 'business_id', parentSet: new Set([targetBusinessId]) },
+      ];
+
+      for (const { table, parentField, parentSet } of childTables) {
+        if (!(table in db.getState())) continue;
+        const records = db.queryAll<any>(table as keyof DBState);
+        const toDelete = records.filter((r) => parentSet.has(r[parentField]));
+        for (const row of toDelete) {
+          db.deleteRecord(table as keyof DBState, row.id);
+          deletedCount++;
+        }
+      }
+      
+      // Delete settings
+      const allSettings = db.queryAll<any>('settings');
+      const testSettings = allSettings.filter((s) => s.key.startsWith(targetBusinessId + '_'));
+      for (const s of testSettings) {
+        db.deleteRecord('settings', s.key);
         deletedCount++;
       }
+
+      db.deleteRecord('businesses', targetBusinessId);
+      deletedCount++;
+
+      db.commit();
+      return { deletedCount };
+    } catch (error) {
+      db.rollback();
+      throw error;
     }
-
-    // Finally delete the business record
-    db.deleteRecord('businesses', targetBusinessId);
-
-    return { deletedCount };
   },
 
   /**

@@ -581,22 +581,24 @@ export const DocumentRepository = {
 
 // 6. SettingsRepository
 export const SettingsRepository = {
-  get(key: string): any {
+  get(key: string, businessId?: string): any {
+    const finalKey = businessId ? `${businessId}_${key}` : key;
     const list = db.queryAll<AppSetting>('settings');
-    const row = list.find((s) => s.key === key);
+    const row = list.find((s) => s.key === finalKey);
     return row ? row.value : null;
   },
 
-  set(key: string, value: any) {
+  set(key: string, value: any, businessId?: string) {
+    const finalKey = businessId ? `${businessId}_${key}` : key;
     db.beginTransaction();
     try {
       const list = db.queryAll<AppSetting>('settings');
-      const idx = list.findIndex((s) => s.key === key);
+      const idx = list.findIndex((s) => s.key === finalKey);
       
       if (idx !== -1) {
         list[idx].value = value;
       } else {
-        db.insertRecord('settings', { key, value });
+        db.insertRecord('settings', { key: finalKey, value });
       }
       db.commit();
     } catch (e) {
