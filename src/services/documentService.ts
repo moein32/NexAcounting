@@ -292,7 +292,7 @@ export const documentService = {
     let discount_total = 0;
     let tax_total = 0;
 
-    const computedItems = items.map((it) => {
+    const computedItems = (items || []).map((it) => {
       const computed = this.calculateLineTotals(
         it.quantity || 0,
         it.unit_price || 0,

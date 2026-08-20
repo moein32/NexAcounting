@@ -811,7 +811,7 @@ export const biService = {
       });
     });
 
-    const report = items.map(item => {
+    const report = (items || []).map(item => {
       const itemBals = balances.filter(b => b.item_id === item.id);
       const totalQty = itemBals.reduce((sum, b) => sum + Number(b.quantity), 0);
       

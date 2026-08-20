@@ -100,7 +100,7 @@ export const SecondaryDashboardStats = React.memo(function SecondaryDashboardSta
     {
       id: 'stat_low_stock_count',
       title: 'کالاهای رو به اتمام (نیاز به خرید)',
-      value: metrics.lowStockItems.length,
+      value: (metrics.lowStockItems || []).length,
       unit: 'قلم کالا' as any,
       type: 'warning' as const,
       icon: 'BadgePercent',

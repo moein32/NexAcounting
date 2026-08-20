@@ -75,12 +75,12 @@ export function CreateItemPage() {
 
   useEffect(() => {
     if (!currentBusiness) return;
-    categoryService.getCategories(currentBusiness.id).then(setCategories);
-    unitService.getUnits(currentBusiness.id).then(setUnits);
+    categoryService.getCategories(currentBusiness.id).then(res => setCategories(res || []));
+    unitService.getUnits(currentBusiness.id).then(res => setUnits(res || []));
     priceListService.getPriceLists(currentBusiness.id).then((lists) => {
-      setPriceLists(lists);
+      setPriceLists(lists || []);
       // Pre-fill price list entries for default lists
-      const initialPrices = lists.map((pl) => ({
+      const initialPrices = (lists || []).map((pl) => ({
         price_list_id: pl.id,
         price: 0,
         min_quantity: 1,
@@ -400,7 +400,7 @@ export function CreateItemPage() {
                   onChange={(e) => setCategoryId(e.target.value)}
                 >
                   <option value="">-- بدون دسته‌بندی --</option>
-                  {categories.map((c) => (
+                  {(categories || []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.parent_name ? `${c.parent_name} > ${c.name}` : c.name}
                     </option>
@@ -414,7 +414,7 @@ export function CreateItemPage() {
                 </label>
                 <Select value={unitId} onChange={(e) => setUnitId(e.target.value)}>
                   <option value="">-- انتخاب واحد --</option>
-                  {units.map((u) => (
+                  {(units || []).map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name} {u.symbol ? `(${u.symbol})` : ''}
                     </option>
@@ -516,7 +516,7 @@ export function CreateItemPage() {
                 </h4>
 
                 <div className="space-y-2">
-                  {priceLists.map((pl) => {
+                  {(priceLists || []).map((pl) => {
                     const priceEntry = pricesList.find((p) => p.price_list_id === pl.id);
                     return (
                       <div

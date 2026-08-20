@@ -130,7 +130,7 @@ export const JournalRepository = {
   },
 
   getLatestEntryNumber(businessId: string): number {
-    const entries = db.queryByBusiness<JournalEntry>('journal_entries', businessId);
+    const entries = db.queryByBusiness<JournalEntry>('journal_entries', businessId) || [];
     if (entries.length === 0) return 0;
     return Math.max(...entries.map(e => e.entry_number));
   },

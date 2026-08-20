@@ -919,7 +919,7 @@ export const testEnvironmentService = {
     CheckRepository.updateStatus(check4.id, 'returned');
 
     // 10. COMPOSE SUMMARY METRICS
-    const allJournalEntries = JournalRepository.getEntries(targetBusinessId);
+    const allJournalEntries = JournalRepository.getEntries(targetBusinessId) || [];
     let totalLinesCount = 0;
     allJournalEntries.forEach((je) => {
       totalLinesCount += JournalRepository.getLinesForEntry(je.id).length;
@@ -975,7 +975,7 @@ export const testEnvironmentService = {
     const start1 = performance.now();
     try {
       const allLines = db.queryAll<JournalLine>('journal_lines');
-      const allEntries = JournalRepository.getEntries(targetBusinessId);
+      const allEntries = JournalRepository.getEntries(targetBusinessId) || [];
       const entryIds = new Set(allEntries.map((e) => e.id));
       const bizLines = allLines.filter((l: any) => entryIds.has(l.journal_id || l.entry_id));
 
@@ -1200,7 +1200,7 @@ export const testEnvironmentService = {
     try {
       const receipts = ReceiptRepository.getAll(targetBusinessId).filter((r) => r.status === 'confirmed');
       const payments = PaymentRepository.getAll(targetBusinessId).filter((p) => p.status === 'confirmed');
-      const journals = JournalRepository.getEntries(targetBusinessId);
+      const journals = JournalRepository.getEntries(targetBusinessId) || [];
 
       let unpostedCount = 0;
       receipts.forEach((r) => {
@@ -1377,13 +1377,13 @@ export const testEnvironmentService = {
       if (confirmedDocs.length > 0) {
         const testDoc = confirmedDocs[0];
         const prevTxCount = InventoryRepository.getTransactions().length;
-        const prevJeCount = JournalRepository.getEntries(targetBusinessId).length;
+        const prevJeCount = (JournalRepository.getEntries(targetBusinessId) || []).length;
 
         // Call repository status update
         DocumentRepository.updateStatus(testDoc.id, 'confirmed');
 
         const newTxCount = InventoryRepository.getTransactions().length;
-        const newJeCount = JournalRepository.getEntries(targetBusinessId).length;
+        const newJeCount = (JournalRepository.getEntries(targetBusinessId) || []).length;
 
         if (newTxCount !== prevTxCount || newJeCount !== prevJeCount) {
           isIdempotent = false;
@@ -1486,7 +1486,7 @@ export const testEnvironmentService = {
       receipts_count: ReceiptRepository.getAll(targetBusinessId).length,
       payments_count: PaymentRepository.getAll(targetBusinessId).length,
       checks_count: CheckRepository.getAll(targetBusinessId).length,
-      journal_entries_count: JournalRepository.getEntries(targetBusinessId).length,
+      journal_entries_count: (JournalRepository.getEntries(targetBusinessId) || []).length,
       journal_lines_count: db.queryAll('journal_lines').length,
       inventory_transfers_count: db.queryByBusiness<any>('inventory_documents', targetBusinessId).filter((d) => d.document_type === 'transfer').length,
     };
@@ -1514,10 +1514,10 @@ export const testEnvironmentService = {
       let deletedCount = 0;
 
       // Identify documents/journals for this business
-      const docs = db.queryByBusiness<any>('documents', targetBusinessId);
+      const docs = db.queryByBusiness<any>('documents', targetBusinessId) || [];
       const docIds = new Set(docs.map((d) => d.id));
       
-      const journals = db.queryByBusiness<any>('journal_entries', targetBusinessId);
+      const journals = db.queryByBusiness<any>('journal_entries', targetBusinessId) || [];
       const journalIds = new Set(journals.map((j) => j.id));
 
       const businessTables: (keyof DBState)[] = [

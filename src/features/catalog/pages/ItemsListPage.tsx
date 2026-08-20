@@ -66,7 +66,7 @@ export function ItemsListPage({
     if (!currentBusiness) return;
     try {
       const cats = await categoryService.getCategories(currentBusiness.id);
-      setCategories(cats);
+      setCategories(cats || []);
     } catch {
       console.error('Error loading categories');
     }
@@ -84,8 +84,8 @@ export function ItemsListPage({
         page,
         pageSize,
       });
-      setItems(result.data);
-      setTotalCount(result.count);
+      setItems(result.data || []);
+      setTotalCount(result.count || 0);
     } catch (err: any) {
       showToast.error('خطا در دریافت لیست کالاها و خدمات', err.message);
     } finally {
@@ -222,7 +222,7 @@ export function ItemsListPage({
             }}
           >
             <option value="all">همه دسته‌بندی‌ها</option>
-            {categories.map((cat) => (
+            {(categories || []).map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.parent_name ? `${cat.parent_name} > ${cat.name}` : cat.name}
               </option>
@@ -259,7 +259,7 @@ export function ItemsListPage({
         <div className="space-y-4">
           {/* MOBILE CARDS LIST */}
           <div className="block md:hidden space-y-3">
-            {items.map((item) => (
+            {(items || []).map((item) => (
               <div
                 key={item.id}
                 onClick={() => navigate(`/items/${item.id}`)}
@@ -328,7 +328,7 @@ export function ItemsListPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {items.map((item) => (
+                {(items || []).map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
