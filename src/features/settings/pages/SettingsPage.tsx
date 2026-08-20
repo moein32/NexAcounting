@@ -48,6 +48,12 @@ import { NotificationSettingsModal } from '../../../notifications/ui/Notificatio
 import { LicenseService } from '../../../services/licenseService';
 import { demoDataService, DemoSummary } from '../../../services/demoDataService';
 import { systemDiagnosticService, DiagnosticReport } from '../../../services/systemDiagnosticService';
+import {
+  testEnvironmentService,
+  TestEnvironmentSummary,
+  TestEnvironmentReport,
+  LiveDbStats,
+} from '../../../services/testEnvironmentService';
 
 type SettingTab = 'business' | 'printing' | 'backup' | 'notification' | 'subscription' | 'security' | 'demo_data';
 
@@ -169,7 +175,7 @@ export function SettingsPage() {
     reader.readAsText(file);
   };
 
-  // Demo Data & Health Check States
+  // Demo & Test Environment States
   const [isGeneratingDemo, setIsGeneratingDemo] = useState(false);
   const [demoSummary, setDemoSummary] = useState<DemoSummary | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -177,9 +183,18 @@ export function SettingsPage() {
   const [isClearingData, setIsClearingData] = useState(false);
   const [isResettingDemo, setIsResettingDemo] = useState(false);
 
-  // Health Check Diagnostics State
+  // Health Check Diagnostics & Test Suite State
   const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const [diagnosticReport, setDiagnosticReport] = useState<DiagnosticReport | null>(null);
+
+  // New Real Test Environment & Integrity Suite States
+  const [isGeneratingTestEnv, setIsGeneratingTestEnv] = useState(false);
+  const [testEnvSummary, setTestEnvSummary] = useState<TestEnvironmentSummary | null>(null);
+  const [isRunningTestEnvSuite, setIsRunningTestEnvSuite] = useState(false);
+  const [testEnvReport, setTestEnvReport] = useState<TestEnvironmentReport | null>(null);
+  const [liveStats, setLiveStats] = useState<LiveDbStats | null>(() =>
+    testEnvironmentService.getLiveStats(currentBusiness.id)
+  );
 
   const tabs: { id: SettingTab; label: string; icon: React.ReactNode }[] = [
     { id: 'business', label: 'کسب‌وکار', icon: <Building2 className="w-4 h-4" /> },
@@ -188,7 +203,7 @@ export function SettingsPage() {
     { id: 'notification', label: 'اعلان‌ها', icon: <Bell className="w-4 h-4" /> },
     { id: 'subscription', label: 'اشتراک و لایسنس', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'security', label: 'امنیت و دسترسی', icon: <ShieldCheck className="w-4 h-4" /> },
-    { id: 'demo_data', label: 'مدیریت داده‌ها و تست', icon: <Activity className="w-4 h-4" /> },
+    { id: 'demo_data', label: 'محیط تست و داده‌ها', icon: <Activity className="w-4 h-4" /> },
   ];
 
   const handleCreateDemoData = async () => {
@@ -196,6 +211,7 @@ export function SettingsPage() {
     try {
       const res = await demoDataService.createDemoData(currentBusiness.id);
       setDemoSummary(res.summary);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: 'success',
         message: 'داده‌های تستی با موفقیت ایجاد گردید.',
@@ -210,14 +226,61 @@ export function SettingsPage() {
     }
   };
 
+  const handleCreateRealTestEnv = async () => {
+    setIsGeneratingTestEnv(true);
+    try {
+      const res = await testEnvironmentService.createRealTestData(currentBusiness.id);
+      setTestEnvSummary(res.summary);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
+      setBackupStatus({
+        type: 'success',
+        message: `محیط تست واقعی با موفقیت ایجاد گردید (${res.session_id}). کلیه جریان‌های FIFO، اسناد مالی، انبار و خزانه‌داری مستقر شدند.`,
+      });
+    } catch (e: any) {
+      setBackupStatus({
+        type: 'error',
+        message: 'خطا در ایجاد محیط تست واقعی: ' + e.message,
+      });
+    } finally {
+      setIsGeneratingTestEnv(false);
+    }
+  };
+
+  const handleRunTestEnvSuite = async () => {
+    setIsRunningTestEnvSuite(true);
+    try {
+      const report = await testEnvironmentService.runIntegrityTestSuite(currentBusiness.id);
+      setTestEnvReport(report);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
+      setBackupStatus({
+        type: report.overallStatus === 'PASS' ? 'success' : 'error',
+        message:
+          report.overallStatus === 'PASS'
+            ? `کلیه ۱۲ آزمون درستی‌سنجی یکپارچه با موفقیت قبول شدند (PASS).`
+            : `تعدادی از آزمون‌های درستی‌سنجی با خطا مواجه شدند.`,
+      });
+    } catch (e: any) {
+      setBackupStatus({
+        type: 'error',
+        message: 'خطا در اجرای آزمون‌های یکپارچگی: ' + e.message,
+      });
+    } finally {
+      setIsRunningTestEnvSuite(false);
+    }
+  };
+
   const handleResetDemoData = async () => {
     setIsResettingDemo(true);
     try {
-      const res = await demoDataService.resetDemoData(currentBusiness.id);
+      const res = await testEnvironmentService.resetTestData(currentBusiness.id);
       setDemoSummary(null);
+      setTestEnvSummary(null);
+      setTestEnvReport(null);
+      setDiagnosticReport(null);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: 'success',
-        message: `داده‌های تستی پاکسازی شدند (${res.deletedCount} رکورد حذف شد).`,
+        message: `داده‌های تستی پاکسازی شدند (${res.deletedCount} رکورد حذف شد و اطلاعات واقعی حفظ گردید).`,
       });
     } catch (e: any) {
       setBackupStatus({
@@ -235,6 +298,11 @@ export function SettingsPage() {
       await demoDataService.clearBusinessData(currentBusiness.id);
       setShowClearConfirm(false);
       setClearStep(1);
+      setDemoSummary(null);
+      setTestEnvSummary(null);
+      setTestEnvReport(null);
+      setDiagnosticReport(null);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
       setBackupStatus({
         type: 'success',
         message: 'تمام اطلاعات تراکنشی کسب‌وکار با موفقیت پاکسازی شد.',
@@ -254,6 +322,7 @@ export function SettingsPage() {
     try {
       const report = await systemDiagnosticService.runFullDiagnostics(currentBusiness.id);
       setDiagnosticReport(report);
+      setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id));
     } catch (e: any) {
       setBackupStatus({
         type: 'error',
@@ -779,31 +848,122 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* Demo Data & Health Check Diagnostics Tab */}
+      {/* Demo Data & Real Test Environment Dashboard */}
       {activeTab === 'demo_data' && (
         <div className="space-y-6">
+          {/* Live SQLite Database Status Card */}
+          {liveStats && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-5 h-5 text-indigo-600" />
+                    <div>
+                      <CardTitle className="text-base text-slate-900 dark:text-white">وضعیت زنده پایگاه داده SQLite و ایزولاسیون داده‌ها</CardTitle>
+                      <CardDescription>بررسی تفکیک داده‌های واقعی کاربر و رکوردهای آزمایشی در جداول محلی</CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RefreshCw className="w-3.5 h-3.5" />}
+                    onClick={() => setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id))}
+                  >
+                    تازه‌سازی آمار
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">طرف‌حساب‌ها (مشتری/تامین‌کننده):</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalParties} کل</span>
+                      <Badge variant="primary">{liveStats.testParties} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">کالاها و خدمات:</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalItems} کل</span>
+                      <Badge variant="primary">{liveStats.testItems} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">اسناد و فاکتورها:</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalDocuments} کل</span>
+                      <Badge variant="primary">{liveStats.testDocuments} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">اسناد حسابداری (سرفصل‌ها):</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalJournalEntries} کل</span>
+                      <Badge variant="primary">{liveStats.testJournalEntries} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">دریافت و پرداخت‌ها:</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalReceipts + liveStats.totalPayments} کل</span>
+                      <Badge variant="primary">{liveStats.testReceipts + liveStats.testPayments} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">چک‌های صیادی:</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalChecks} کل</span>
+                      <Badge variant="primary">{liveStats.testChecks} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">لایه‌های بهای تمام‌شده:</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-white">{liveStats.totalCostLayers} کل</span>
+                      <Badge variant="primary">{liveStats.testCostLayers} تستی</Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                    <span className="text-slate-500">روش بهای تمام‌شده:</span>
+                    <div className="flex items-center justify-between font-bold pt-0.5">
+                      <Badge variant="success">{liveStats.activeCostMethod === 'fifo' ? 'FIFO (اولین صادره)' : 'میانگین موزون'}</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Demo Data Management Card */}
+            {/* Real Test Environment Engine Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
                   <Activity className="w-5 h-5 text-blue-600" />
-                  <span>مدیریت داده‌های تستی (Demo Data Engine)</span>
+                  <span>تولید محیط تست واقعی (Real Test Environment)</span>
                 </CardTitle>
                 <CardDescription>
-                  ایجاد چرخه کامل کسب‌وکار تستی شامل ۱۰ مشتری، ۱۰ تامین‌کننده، ۳۰ کالا، ۱۰ خدمت، ۵ پیش‌فاکتور، ۱۰ فاکتور فروش، ۱۰ فاکتور خرید، خزانه‌داری و اسناد حسابداری.
+                  ایجاد داده‌های تست با عبور ۱۰۰٪ از منطق‌های واقعی، شامل لایه‌های FIFO، فاکتورهای فروش تسویه/نسیه/ابطال، انتقال بین انبارها، خزانه‌داری، چک‌های صیادی و ثبت اسناد دوطرفه.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5">
                   <Button
                     variant="primary"
                     size="sm"
                     icon={<Play className="w-4 h-4" />}
-                    onClick={handleCreateDemoData}
-                    isLoading={isGeneratingDemo}
+                    onClick={handleCreateRealTestEnv}
+                    isLoading={isGeneratingTestEnv}
                   >
-                    ایجاد داده‌های تستی
+                    ایجاد محیط تست واقعی
                   </Button>
 
                   <Button
@@ -813,7 +973,7 @@ export function SettingsPage() {
                     onClick={handleResetDemoData}
                     isLoading={isResettingDemo}
                   >
-                    بازنشانی داده‌های تستی
+                    پاکسازی ایمن داده‌های تستی
                   </Button>
 
                   <Button
@@ -825,14 +985,37 @@ export function SettingsPage() {
                       setShowClearConfirm(true);
                     }}
                   >
-                    پاکسازی کامل داده‌ها
+                    پاکسازی کامل
                   </Button>
                 </div>
 
-                {demoSummary && (
+                {testEnvSummary && (
+                  <div className="p-4 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-2.5 text-xs">
+                    <div className="font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
+                      <span>سناریوهای تستی مستقر شده:</span>
+                      <Badge variant="primary">{testEnvSummary.session_id}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-slate-700 dark:text-slate-300">
+                      <div>مشتریان و تامین‌کنندگان: <b>{testEnvSummary.customers_count + testEnvSummary.suppliers_count}</b></div>
+                      <div>انبارها و شعب: <b>{testEnvSummary.warehouses_count}</b></div>
+                      <div>کالاها و خدمات: <b>{testEnvSummary.products_count + testEnvSummary.services_count}</b></div>
+                      <div>فاکتورهای خرید (FIFO): <b>{testEnvSummary.purchase_invoices_count}</b></div>
+                      <div>فاکتورهای فروش (انواع تسویه): <b>{testEnvSummary.sales_invoices_count}</b></div>
+                      <div>اسناد ابطال / مرجوعی: <b>{testEnvSummary.cancelled_invoices_count + testEnvSummary.sales_returns_count}</b></div>
+                      <div>لایه‌های قیمت ثبت شده: <b>{testEnvSummary.cost_layers_count}</b></div>
+                      <div>تراکنش‌های بهای تمام‌شده: <b>{testEnvSummary.cogs_entries_count}</b></div>
+                      <div>اسناد حسابداری دفتر کل: <b>{testEnvSummary.journal_entries_count}</b></div>
+                      <div>آرتیکل‌های سند (Lines): <b>{testEnvSummary.journal_lines_count}</b></div>
+                      <div>دریافت و پرداخت نقد/بانک: <b>{testEnvSummary.receipts_count + testEnvSummary.payments_count}</b></div>
+                      <div>چک‌های وصولی/برگشتی: <b>{testEnvSummary.checks_count}</b></div>
+                    </div>
+                  </div>
+                )}
+
+                {demoSummary && !testEnvSummary && (
                   <div className="p-4 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-2 text-xs">
                     <div className="font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
-                      <span>خلاصه داده‌های تستی ایجاد شده:</span>
+                      <span>خلاصه داده‌های تستی:</span>
                       <Badge variant="primary">{demoSummary.session_id}</Badge>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 text-slate-700 dark:text-slate-300">
@@ -840,41 +1023,96 @@ export function SettingsPage() {
                       <div>تامین‌کنندگان: <b>{demoSummary.suppliers_count}</b></div>
                       <div>انبارها: <b>{demoSummary.warehouses_count}</b></div>
                       <div>کالاها: <b>{demoSummary.products_count}</b></div>
-                      <div>خدمات: <b>{demoSummary.services_count}</b></div>
                       <div>فاکتورهای فروش: <b>{demoSummary.sales_invoices_count}</b></div>
-                      <div>فاکتورهای خرید: <b>{demoSummary.purchase_invoices_count}</b></div>
                       <div>اسناد حسابداری: <b>{demoSummary.journal_entries_count}</b></div>
-                      <div>چک‌های صادر/دریافتی: <b>{demoSummary.checks_count}</b></div>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Health Check & Automated Workflow Tests */}
+            {/* Health Check & Automated Test Suite Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
                   <FileCheck className="w-5 h-5 text-emerald-600" />
-                  <span>تست سلامت سیستم (System Health Check)</span>
+                  <span>آزمون‌های خودکار درستی‌سنجی یکپارچه (Integrity Test Suite)</span>
                 </CardTitle>
                 <CardDescription>
-                  اجرای تست‌های خودکار سرتاسری روی فروش، خرید، انبار، توازن اسناد حسابداری (Debit === Credit)، خزانه‌داری و رمزنگاری .nxb.
+                  اجرای خودکار ۱۲ آزمون اعتبارسنجی تراز مالی (Debit===Credit)، صحت ریاضی لایه‌های FIFO، انطباق کاردکس با انبار و برگشت‌پذیری اسناد.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<Activity className="w-4 h-4" />}
-                  onClick={handleRunDiagnostics}
-                  isLoading={isRunningDiagnostics}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  اجرای تست کامل سیستم
-                </Button>
+                <div className="flex flex-wrap gap-2.5">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Activity className="w-4 h-4" />}
+                    onClick={handleRunTestEnvSuite}
+                    isLoading={isRunningTestEnvSuite}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    اجرای ۱۲ آزمون درستی‌سنجی
+                  </Button>
 
-                {diagnosticReport && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Sliders className="w-4 h-4" />}
+                    onClick={handleRunDiagnostics}
+                    isLoading={isRunningDiagnostics}
+                  >
+                    تست سلامت دیاگنوستیک
+                  </Button>
+                </div>
+
+                {/* 12 Integrity Suite Results */}
+                {testEnvReport && (
+                  <div className="space-y-3 pt-2">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">نتیجه آزمون‌ها:</span>
+                        {testEnvReport.overallStatus === 'PASS' ? (
+                          <Badge variant="success">
+                            <CheckCircle2 className="w-3 h-3 inline-block ml-1" />
+                            {testEnvReport.passedCount} از {testEnvReport.totalAssertions} آزمون قبول (PASS)
+                          </Badge>
+                        ) : (
+                          <Badge variant="danger">
+                            <AlertTriangle className="w-3 h-3 inline-block ml-1" />
+                            {testEnvReport.failedCount} خطا از {testEnvReport.totalAssertions} آزمون
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-slate-500">زمان: {testEnvReport.totalDurationMs}ms</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                      {testEnvReport.assertions?.map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.title}</span>
+                            {item.status === 'PASS' && <Badge variant="success">PASS</Badge>}
+                            {item.status === 'WARN' && <Badge variant="warning">WARN</Badge>}
+                            {item.status === 'FAIL' && <Badge variant="danger">FAIL</Badge>}
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{item.message}</p>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-3 pt-1">
+                            <span>ماژول: {item.category}</span>
+                            <span>تعداد رکورد ارزیابی: {item.recordsTested}</span>
+                            <span>مدت: {item.durationMs}ms</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Legacy Diagnostics Report */}
+                {diagnosticReport && !testEnvReport && (
                   <div className="space-y-3 pt-2">
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
@@ -891,10 +1129,10 @@ export function SettingsPage() {
                           </Badge>
                         )}
                       </div>
-                      <span className="text-slate-500">زمان اجرای تست: {diagnosticReport.totalDurationMs}ms</span>
+                      <span className="text-slate-500">زمان: {diagnosticReport.totalDurationMs}ms</span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                       {diagnosticReport.results?.map((res) => (
                         <div
                           key={res.id}

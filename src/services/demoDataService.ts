@@ -674,7 +674,14 @@ export const demoDataService = {
           const initialLen = rows.length;
           const filtered = rows.filter((r) => {
             if (businessId && r.business_id && r.business_id !== businessId) return true;
-            return !(r.is_demo === 1 || (r.demo_session_id && String(r.demo_session_id).startsWith('demo_session_')));
+            return !(
+              r.is_demo === 1 ||
+              (r.demo_session_id &&
+                (String(r.demo_session_id).startsWith('demo_session_') ||
+                  String(r.demo_session_id).startsWith('TEST_ENV_') ||
+                  String(r.demo_session_id).startsWith('test_e2e_') ||
+                  String(r.demo_session_id).startsWith('TEST_REPORT_')))
+            );
           });
           deletedCount += initialLen - filtered.length;
           (state[table] as any[]) = filtered;

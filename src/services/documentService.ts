@@ -205,7 +205,7 @@ import { AccountingEngine } from './accountingEngine';
 function getFromStorage<T>(key: string, initial: T[]): T[] {
   try {
     if (key === STORAGE_KEYS.DOCUMENTS) {
-      const list = DocumentRepository.getAll('demo_biz_1') as unknown as T[];
+      const list = db.queryAll('documents') as unknown as T[];
       if (list.length === 0) {
         setToStorage(STORAGE_KEYS.DOCUMENTS, initial);
         return initial;
