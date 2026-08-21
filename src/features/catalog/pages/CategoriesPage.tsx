@@ -202,7 +202,7 @@ export function CategoriesPage() {
             </label>
             <Select value={parentId} onChange={(e) => setParentId(e.target.value)}>
               <option value="">-- بدون والد (دسته‌بندی اصلی) --</option>
-              {categories
+              {(categories || [])
                 .filter((c) => !editingCategory || c.id !== editingCategory.id)
                 .map((c) => (
                   <option key={c.id} value={c.id}>

@@ -48,6 +48,7 @@ export function DataTable<T extends Record<string, any>>({
     });
   }, [data, searchTerm, searchKey]);
 
+  const safeColumns = columns || [];
   const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
   const paginatedData = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -85,7 +86,7 @@ export function DataTable<T extends Record<string, any>>({
             <Table>
               <TableHeader>
                 <TableRow>
-                  {columns.map((col) => (
+                  {safeColumns.map((col) => (
                     <TableHead key={col.key} style={{ width: col.width }}>
                       {col.header}
                     </TableHead>
@@ -99,7 +100,7 @@ export function DataTable<T extends Record<string, any>>({
                     onClick={() => onRowClick && onRowClick(row)}
                     className={onRowClick ? 'cursor-pointer' : ''}
                   >
-                    {columns.map((col) => (
+                    {safeColumns.map((col) => (
                       <TableCell key={col.key}>
                         {col.render ? col.render(row) : row[col.key]}
                       </TableCell>
@@ -122,9 +123,9 @@ export function DataTable<T extends Record<string, any>>({
               }
 
               // Default Mobile Card Auto-Generator
-              const firstCol = columns[0];
-              const secondCol = columns[1];
-              const restCols = columns.slice(2);
+              const firstCol = safeColumns[0];
+              const secondCol = safeColumns[1];
+              const restCols = safeColumns.slice(2);
 
               return (
                 <div
