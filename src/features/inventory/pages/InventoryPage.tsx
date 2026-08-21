@@ -48,7 +48,7 @@ export function InventoryPage() {
     setIsLoading(true);
     try {
       const data = await inventoryService.getInventoryDashboardData(businessId);
-      setStats(data);
+      setStats(data || []);
 
       const warehouses = await inventoryService.getWarehouses(businessId);
       const balances = await inventoryService.getInventoryBalances(businessId);
@@ -249,8 +249,8 @@ export function InventoryPage() {
                         paddingAngle={5}
                         dataKey="quantity"
                       >
-                        {balancesByWarehouse.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        {(balancesByWarehouse || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % (COLORS || []).length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any) => [`${value} عدد`, 'تعداد کل کالاها']} />
@@ -263,11 +263,11 @@ export function InventoryPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 justify-center">
-                {balancesByWarehouse.map((entry, index) => (
+                {(balancesByWarehouse || []).map((entry, index) => (
                   <div key={entry.name} className="flex items-center gap-1.5 text-xs">
                     <span
                       className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      style={{ backgroundColor: COLORS[index % (COLORS || []).length] }}
                     />
                     <span className="text-gray-600">{entry.name}</span>
                   </div>
@@ -305,7 +305,7 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
+                  {stats?.recentTransactions && (stats.recentTransactions || []).length > 0 ? (
                     stats.recentTransactions.map((tx: any) => {
                       const label = getTransactionLabel(tx.transaction_type);
                       const isAddition =

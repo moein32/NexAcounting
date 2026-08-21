@@ -117,7 +117,7 @@ export function JournalPage() {
   };
 
   const handleRemoveLineRow = (index: number) => {
-    if (manualLines.length <= 2) {
+    if ((manualLines || []).length <= 2) {
       alert('حداقل وجود دو ردیف سند دوبل برای موازنه حساب الزامی است.');
       return;
     }
@@ -156,7 +156,7 @@ export function JournalPage() {
 
     // Filter out blank accounts
     const validLines = manualLines.filter(l => l.account_code);
-    if (validLines.length < 2) {
+    if ((validLines || []).length < 2) {
       setFormError('لطفاً حداقل برای دو آرتیکل، حساب معین انتخاب کنید.');
       return;
     }
@@ -290,7 +290,7 @@ export function JournalPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {manualLines.map((line, idx) => (
+                  {(manualLines || []).map((line, idx) => (
                     <div 
                       key={idx} 
                       className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 items-end"
@@ -304,7 +304,7 @@ export function JournalPage() {
                           className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                         >
                           <option value="">-- انتخاب حساب --</option>
-                          {accounts.map(acc => (
+                          {(accounts || []).map(acc => (
                             <option key={acc.id} value={acc.code}>
                               [{acc.code}] {acc.name}
                             </option>
@@ -434,13 +434,13 @@ export function JournalPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {filteredEntries.length === 0 ? (
+          {(filteredEntries || []).length === 0 ? (
             <div className="text-center py-12 text-xs text-slate-400">
               هیچ سند حسابداری منطبق با جستجو یافت نشد.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredEntries.map(entry => {
+              {(filteredEntries || []).map(entry => {
                 const isExpanded = expandedEntryId === entry.id;
                 const lines = linesMap[entry.id] || [];
                 const totals = getEntryTotals(entry.id);
@@ -522,7 +522,7 @@ export function JournalPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {lines.map((l) => {
+                            {(lines || []).map((l) => {
                               const acc = AccountRepository.getAccountById(l.account_id);
                               return (
                                 <tr key={l.id} className="text-slate-700 dark:text-slate-300">

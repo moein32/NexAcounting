@@ -130,7 +130,7 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
 
   const toggleRole = (r: PartyRoleType) => {
     if (roles.includes(r)) {
-      if (roles.length === 1) {
+      if ((roles || []).length === 1) {
         showToast.warning('حداقل انتخاب یک نقش (مشتری یا تأمین‌کننده) الزامی است');
         return;
       }
@@ -165,7 +165,7 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
     if (currentStep === 1) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (roles.length === 0) {
+      if ((roles || []).length === 0) {
         showToast.error('لطفاً حداقل یک نقش انتخاب کنید');
         return;
       }
@@ -290,7 +290,7 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
         mobile: '',
         phone: '',
         email: '',
-        is_primary: contacts.length === 0,
+        is_primary: (contacts || []).length === 0,
       },
     ]);
   };
@@ -611,7 +611,7 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
               label="استان"
               value={province}
               onChange={(e) => setProvince(e.target.value)}
-              options={PROVINCES.map((p) => ({ value: p, label: p }))}
+              options={(PROVINCES || []).map((p) => ({ value: p, label: p }))}
             />
 
             <Input
@@ -655,13 +655,13 @@ export function PartyFormWizard({ initialData, isEditMode = false }: PartyFormWi
               </Button>
             </div>
 
-            {contacts.length === 0 ? (
+            {(contacts || []).length === 0 ? (
               <p className="text-xs text-slate-400 italic">
                 هیچ فرد رابطی هنوز اضافه نشده است. (مناسب برای شرکت‌های دارای چند مدیر خرید/فروش)
               </p>
             ) : (
               <div className="space-y-3">
-                {contacts.map((contact, idx) => (
+                {(contacts || []).map((contact, idx) => (
                   <div
                     key={contact.id || idx}
                     className="p-3 bg-slate-100 dark:bg-slate-800/60 rounded-xl grid grid-cols-1 sm:grid-cols-5 gap-2 items-center"

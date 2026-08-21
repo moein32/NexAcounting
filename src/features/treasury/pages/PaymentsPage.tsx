@@ -273,7 +273,7 @@ export function PaymentsPage() {
             className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none"
           >
             <option value="all">همه روش‌های پرداخت</option>
-            {paymentMethods.map((m) => (
+            {(paymentMethods || []).map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
@@ -284,7 +284,7 @@ export function PaymentsPage() {
             className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none"
           >
             <option value="all">همه صندوق‌ها و بانک‌ها</option>
-            {accounts.map((acc) => (
+            {(accounts || []).map((acc) => (
               <option key={acc.id} value={acc.id}>{acc.name}</option>
             ))}
           </select>
@@ -293,7 +293,7 @@ export function PaymentsPage() {
 
       {/* Mobile-First Responsive List */}
       <div className="block md:hidden space-y-4">
-        {filteredPayments.map((row, idx) => (
+        {(filteredPayments || []).map((row, idx) => (
           <div key={row.id} className="bg-white dark:bg-slate-950 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-3 shadow-sm">
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-mono text-slate-400">#{(idx || 0) + 1} • سند پرداخت</span>
@@ -318,7 +318,7 @@ export function PaymentsPage() {
             </div>
           </div>
         ))}
-        {filteredPayments.length === 0 && (
+        {(filteredPayments || []).length === 0 && (
           <div className="bg-slate-50/50 rounded-2xl p-8 text-center text-slate-400">هیچ سندی یافت نشد.</div>
         )}
       </div>
@@ -366,7 +366,7 @@ export function PaymentsPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500"
                 >
                   <option value="">انتخاب تأمین‌کننده...</option>
-                  {parties.map((p) => (
+                  {(parties || []).map((p) => (
                     <option key={p.id} value={p.id}>{p.name} (کد: {p.code})</option>
                   ))}
                 </select>
@@ -394,7 +394,7 @@ export function PaymentsPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500"
                 >
                   <option value="">انتخاب حساب مبدا...</option>
-                  {accounts.map((acc) => (
+                  {(accounts || []).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} (موجودی فعلی: {formatCurrency(acc.current_balance)} تومان)
                     </option>
@@ -409,7 +409,7 @@ export function PaymentsPage() {
                   onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500"
                 >
-                  {paymentMethods.map((m) => (
+                  {(paymentMethods || []).map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>

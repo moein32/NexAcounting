@@ -45,7 +45,7 @@ export function QuickActions() {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 my-4">
-      {actions.map((act, idx) => (
+      {(actions || []).map((act, idx) => (
         <Link key={idx} to={act.path}>
           <Card className="p-3 hover:border-blue-500/50 transition-all text-center flex flex-col items-center gap-2 group cursor-pointer">
             <div className={`p-3 rounded-2xl group-hover:scale-110 transition-transform ${act.bg}`}>

@@ -305,7 +305,7 @@ export const inventoryService = {
       const balances = getFromStorage<InventoryBalance>(STORAGE_KEYS.BALANCES, INITIAL_BALANCES);
       const locations = getFromStorage<WarehouseLocation>(STORAGE_KEYS.LOCATIONS, INITIAL_LOCATIONS);
 
-      return warehouses.map((w) => {
+      return (warehouses || []).map((w) => {
         const whBalances = balances.filter((b) => b.warehouse_id === w.id);
         const whLocs = locations.filter((l) => l.warehouse_id === w.id);
         return {
@@ -640,7 +640,7 @@ export const inventoryService = {
         balances = balances.filter((b) => b.warehouse_id === filters.warehouse_id);
       }
 
-      let enriched = balances.map((b) => {
+      let enriched = (balances || []).map((b) => {
         const item = items.find((i) => i.id === b.item_id);
         const wh = warehouses.find((w) => w.id === b.warehouse_id);
         return {
@@ -764,7 +764,7 @@ export const inventoryService = {
         docs = docs.filter((d) => d.status === filters.status);
       }
 
-      let enriched = docs.map((d) => {
+      let enriched = (docs || []).map((d) => {
         const wh = whs.find((w) => w.id === d.warehouse_id);
         const tWh = d.target_warehouse_id ? whs.find((w) => w.id === d.target_warehouse_id) : null;
         const docItems = items.filter((i) => i.document_id === d.id);
@@ -1063,7 +1063,7 @@ export const inventoryService = {
           }
         }
 
-        const itemRows = input.items.map((item) => ({
+        const itemRows = (input.items || []).map((item) => ({
           document_id: doc.id,
           item_id: item.item_id!,
           quantity: Number(item.quantity) || 0,
@@ -1507,7 +1507,7 @@ export const inventoryService = {
         target_warehouse_id: input.targetWarehouseId,
         description: input.description || 'حواله انتقال بین انبارها',
         document_date: input.date || new Date().toISOString(),
-        items: input.items.map((i) => ({
+        items: (input.items || []).map((i) => ({
           item_id: i.itemId,
           quantity: i.quantity,
           unit_cost: i.unitCost,
@@ -1552,7 +1552,7 @@ export const inventoryService = {
         warehouse_id: input.warehouseId,
         description: input.description || 'سند اصلاحیه/تعدیل موجودی',
         document_date: input.date || new Date().toISOString(),
-        items: input.items.map((i) => ({
+        items: (input.items || []).map((i) => ({
           item_id: i.itemId,
           quantity: i.quantity,
           unit_cost: i.unitCost,
@@ -1595,7 +1595,7 @@ export const inventoryService = {
         txs = txs.filter((t) => t.transaction_type === filters.transaction_type);
       }
 
-      let enriched = txs.map((t) => {
+      let enriched = (txs || []).map((t) => {
         const wh = whs.find((w) => w.id === t.warehouse_id);
         const item = items.find((i) => i.id === t.item_id);
         return {
@@ -1696,7 +1696,7 @@ export const inventoryService = {
       const items = getFromStorage<StockCountItem>(STORAGE_KEYS.STOCK_COUNT_ITEMS, []);
 
       const bizCounts = counts.filter((c) => c.business_id === businessId);
-      return bizCounts.map((c) => {
+      return (bizCounts || []).map((c) => {
         const wh = whs.find((w) => w.id === c.warehouse_id);
         const countItems = items.filter((ci) => ci.stock_count_id === c.id);
         const hasVariance = countItems.some((ci) => ci.variance !== 0);

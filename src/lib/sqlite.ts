@@ -111,10 +111,7 @@ class SqliteDatabaseEngine {
 
   private ensureDefaultBusinesses() {
     const defaultBizs = [
-      { id: 'demo_biz_1', name: 'کسب‌وکار نمونه', code: 'NX-1001', currency: 'تومان', fiscal_year: '۱۴۰۳', is_active: true },
       { id: 'biz_main', name: 'شرکت اصلی', code: 'NX-9000', currency: 'تومان', fiscal_year: '۱۴۰۳', is_active: true },
-      { id: 'biz_1', name: 'شرکت فناوری نوین پرداز (سهامی خاص)', code: 'NX-9042', currency: 'تومان', fiscal_year: '۱۴۰۳', is_active: true },
-      { id: 'biz_2', name: 'بازرگانی پارس گستر', code: 'NX-1102', currency: 'تومان', fiscal_year: '۱۴۰۳', is_active: true },
     ];
     defaultBizs.forEach((b) => {
       if (!this.state.businesses.some((existing) => existing.id === b.id)) {

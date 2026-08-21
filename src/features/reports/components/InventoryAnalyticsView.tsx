@@ -34,7 +34,7 @@ export function InventoryAnalyticsView({ data }: InventoryAnalyticsViewProps) {
   }, [data.items]);
 
   const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && (payload || []).length) {
       return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg text-xs">
           <p className="font-bold text-slate-900 dark:text-slate-100">{payload[0].name}</p>

@@ -54,10 +54,10 @@ export function LoginPage() {
 
   // Keypad Handlers
   const handlePinDigit = (digit: string) => {
-    if (enteredPin.length < 6) {
+    if ((enteredPin || []).length < 6) {
       const newVal = enteredPin + digit;
       setEnteredPin(newVal);
-      if (newVal.length >= 4) {
+      if ((newVal || []).length >= 4) {
         handleLocalLogin(newVal);
       }
     }
@@ -75,7 +75,7 @@ export function LoginPage() {
       if (success) {
         navigate('/dashboard', { replace: true });
       } else {
-        if (pinValue.length >= 4) {
+        if ((pinValue || []).length >= 4) {
           setErrorMessage('رمز عبور PIN نادرست است. لطفاً مجدداً تلاش کنید.');
           setEnteredPin('');
         }
@@ -111,7 +111,7 @@ export function LoginPage() {
     setErrorMessage(null);
     setInfoMessage(null);
 
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!phoneNumber || (phoneNumber || []).length < 10) {
       setErrorMessage('لطفاً یک شماره تلفن همراه معتبر وارد کنید.');
       return;
     }
@@ -138,7 +138,7 @@ export function LoginPage() {
     setErrorMessage(null);
     setInfoMessage(null);
 
-    if (!otpCode || otpCode.length < 4) {
+    if (!otpCode || (otpCode || []).length < 4) {
       setErrorMessage('لطفاً کد تایید را وارد کنید.');
       return;
     }
@@ -182,7 +182,7 @@ export function LoginPage() {
       return;
     }
 
-    if (setupPin.length < 4 || setupPin.length > 6) {
+    if ((setupPin || []).length < 4 || (setupPin || []).length > 6) {
       setErrorMessage('گذرواژه PIN باید بین ۴ تا ۶ رقم باشد.');
       return;
     }
@@ -271,7 +271,7 @@ export function LoginPage() {
                     <div
                       key={num}
                       className={`w-4 h-4 rounded-full border transition-all duration-150 ${
-                        enteredPin.length >= num
+                        (enteredPin || []).length >= num
                           ? 'bg-blue-600 border-blue-600 scale-125 shadow-sm shadow-blue-500/40'
                           : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
                       }`}

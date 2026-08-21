@@ -65,10 +65,10 @@ export function ReportsPage() {
     try {
       if (activeTab === 'sales') {
         const data = await biService.getSalesReport(currentBusiness.id, filters);
-        setSalesData(data);
+        setSalesData(data || []);
       } else if (activeTab === 'purchases') {
         const data = await biService.getPurchaseReport(currentBusiness.id, filters);
-        setPurchaseData(data);
+        setPurchaseData(data || []);
       } else if (activeTab === 'customers') {
         const custs = await biService.getCustomerReport(currentBusiness.id);
         const supps = await biService.getSupplierReport(currentBusiness.id);
@@ -76,10 +76,10 @@ export function ReportsPage() {
         setSuppliersData(supps);
       } else if (activeTab === 'inventory') {
         const data = await biService.getInventoryReport(currentBusiness.id);
-        setInventoryData(data);
+        setInventoryData(data || []);
       } else if (activeTab === 'treasury') {
         const data = await biService.getTreasuryReport(currentBusiness.id);
-        setTreasuryData(data);
+        setTreasuryData(data || []);
       }
     } catch (e) {
       console.error('Failed to extract business intelligence report', e);
@@ -98,7 +98,7 @@ export function ReportsPage() {
 
   // Persian CSV Exporter (With UTF-8 BOM for perfect Excel compatibility)
   const handleExportCSV = (rows: any[], filename: string) => {
-    if (rows.length === 0) return;
+    if ((rows || []).length === 0) return;
     const headers = Object.keys(rows[0]).join(',');
     const content = rows.map(row => 
       Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')
@@ -141,7 +141,7 @@ export function ReportsPage() {
 
       {/* Segmented top navigation tabs */}
       <div className="flex items-center overflow-x-auto gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
-        {tabsConfig.map(tab => (
+        {(tabsConfig || []).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

@@ -351,7 +351,7 @@ export const documentService = {
         bizDocs = bizDocs.filter((d) => d.party_id === filters.party_id);
       }
 
-      let enriched = bizDocs.map((d) => {
+      let enriched = (bizDocs || []).map((d) => {
         const party = parties.find((p) => p.id === d.party_id);
         const wh = warehouses.find((w) => w.id === d.warehouse_id);
 
@@ -606,7 +606,7 @@ export const documentService = {
       };
 
       // Add lines
-      const addedItems = items.map((it, idx) => ({
+      const addedItems = (items || []).map((it, idx) => ({
         ...it,
         id: `di_${Date.now()}_${idx}`,
         document_id: docId,
@@ -672,7 +672,7 @@ export const documentService = {
 
       // Bulk insert items
       if (items.length > 0) {
-        const itemRows = items.map((it) => ({
+        const itemRows = (items || []).map((it) => ({
           document_id: d.id,
           item_id: it.item_id,
           description: it.description || null,
@@ -772,7 +772,7 @@ export const documentService = {
       if (input.items) {
         // Delete original items, insert new ones
         const otherItems = docItems.filter((it) => it.document_id !== id);
-        const addedItems = items.map((it, idx) => ({
+        const addedItems = (items || []).map((it, idx) => ({
           ...it,
           id: `di_${Date.now()}_update_${idx}`,
           document_id: id,
@@ -824,7 +824,7 @@ export const documentService = {
         const { error: delErr } = await supabase.from('document_items').delete().eq('document_id', id);
         if (delErr) throw delErr;
 
-        const itemRows = items.map((it) => ({
+        const itemRows = (items || []).map((it) => ({
           document_id: id,
           item_id: it.item_id,
           description: it.description || null,
@@ -954,7 +954,7 @@ export const documentService = {
 
       if (productLines.length > 0) {
         // Map to inventory format
-        const invItems = productLines.map((it) => ({
+        const invItems = (productLines || []).map((it) => ({
           item_id: it.item_id,
           quantity: it.quantity,
           unit_cost: it.unit_price, // cost for stock tracking

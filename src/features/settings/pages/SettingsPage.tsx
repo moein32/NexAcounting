@@ -370,7 +370,7 @@ export function SettingsPage() {
 
       {/* Reorganized Category Navigation Tabs */}
       <div className="flex overflow-x-auto gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 scrollbar-none">
-        {tabs.map((tab) => (
+        {(tabs || []).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -724,7 +724,7 @@ export function SettingsPage() {
 
           {/* Available Plans */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {plans.map((p) => (
+            {(plans || []).map((p) => (
               <div
                 key={p.id}
                 className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${

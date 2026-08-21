@@ -95,7 +95,7 @@ export function TransactionsPage() {
               className="w-full text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:ring-1 focus:ring-gray-950"
             >
               <option value="all">همه انبارها</option>
-              {warehouses.map((w) => (
+              {(warehouses || []).map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
@@ -165,7 +165,7 @@ export function TransactionsPage() {
             <p className="text-gray-400 text-xs mt-0.5">ثبت‌شده بر اساس اولویت زمانی با جزییات بهای میانگین خرید</p>
           </div>
           <span className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg">
-            نمایش <strong>{transactions.length}</strong> تراکنش یافت شده
+            نمایش <strong>{(transactions || []).length}</strong> تراکنش یافت شده
           </span>
         </div>
 
@@ -190,7 +190,7 @@ export function TransactionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {transactions.length > 0 ? (
+                {(transactions || []).length > 0 ? (
                   transactions.map((tx) => {
                     const badge = getTransactionBadge(tx.transaction_type);
                     const isAddition =

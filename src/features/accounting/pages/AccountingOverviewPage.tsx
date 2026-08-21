@@ -39,7 +39,7 @@ export function AccountingOverviewPage() {
     // 1. Initialize Default Accounts & Periods if not yet created
     AccountRepository.getAccounts(businessId);
     const periods = AccountingRepository.getPeriods(businessId);
-    if (periods.length > 0) {
+    if ((periods || []).length > 0) {
       setPeriod(periods[0]);
     }
 

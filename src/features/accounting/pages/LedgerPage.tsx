@@ -39,7 +39,7 @@ export function LedgerPage() {
     const all = AccountRepository.getAccounts(businessId);
     const moeen = all.filter(a => a.level === 2);
     setMoeenAccounts(moeen);
-    if (moeen.length > 0 && !selectedMoeenId) {
+    if ((moeen || []).length > 0 && !selectedMoeenId) {
       setSelectedMoeenId(moeen[0].id);
     }
 
@@ -148,7 +148,7 @@ export function LedgerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {trialBalance.length === 0 ? (
+                {(trialBalance || []).length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 italic">هیچ تراکنش مالی تاییدشده‌ای در سیستم ثبت نشده است.</td>
                   </tr>
@@ -207,7 +207,7 @@ export function LedgerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {generalLedger.length === 0 ? (
+                {(generalLedger || []).length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 text-center text-slate-400 italic">هیچ گردشی در دفتر کل ثبت نشده است.</td>
                   </tr>
@@ -255,7 +255,7 @@ export function LedgerPage() {
                   className="w-full sm:w-80 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="">-- انتخاب حساب --</option>
-                  {moeenAccounts.map(a => (
+                  {(moeenAccounts || []).map(a => (
                     <option key={a.id} value={a.id}>
                       [{a.code}] {a.name}
                     </option>
@@ -291,7 +291,7 @@ export function LedgerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {accountLedger.length === 0 ? (
+                    {(accountLedger || []).length === 0 ? (
                       <tr>
                         <td colSpan={6} className="p-8 text-center text-slate-400 italic">هیچ گردشی برای این حساب معین در دفاتر روزنامه یافت نشد.</td>
                       </tr>

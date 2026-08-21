@@ -509,7 +509,7 @@ export function CreateItemPage() {
             </div>
 
             {/* Price Lists Table */}
-            {priceLists.length > 0 && (
+            {(priceLists || []).length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                   تعیین قیمت در سایر لیست‌های قیمت:

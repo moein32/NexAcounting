@@ -37,7 +37,7 @@ export function CategoriesPage() {
     setIsLoading(true);
     try {
       const data = await categoryService.getCategories(currentBusiness.id);
-      setCategories(data);
+      setCategories(data || []);
     } catch (err: any) {
       showToast.error('خطا در دریافت دسته‌بندی‌ها', err.message);
     } finally {
@@ -157,7 +157,7 @@ export function CategoriesPage() {
 
       {isLoading ? (
         <LoadingState text="در حال دریافت ساختار درختی دسته‌بندی‌ها..." />
-      ) : categories.length === 0 ? (
+      ) : (categories || []).length === 0 ? (
         <Card className="p-8 text-center space-y-4">
           <p className="text-slate-500 text-sm">هیچ دسته‌بندی تعریف نشده است.</p>
 

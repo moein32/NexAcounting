@@ -31,7 +31,7 @@ export function PurchaseReportView({ data, onPrint, onExportCSV }: PurchaseRepor
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && (payload || []).length) {
       return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg text-xs">
           <p className="font-bold text-slate-900 dark:text-slate-100">{label}</p>
@@ -92,7 +92,7 @@ export function PurchaseReportView({ data, onPrint, onExportCSV }: PurchaseRepor
         </CardHeader>
         <CardContent className="pt-4">
           <div className="h-64 w-full">
-            {data.dailyPurchases.length > 0 ? (
+            {(data.dailyPurchases || []).length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.dailyPurchases} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>

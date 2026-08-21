@@ -35,7 +35,7 @@ export function PriceListsPage() {
     setIsLoading(true);
     try {
       const data = await priceListService.getPriceLists(currentBusiness.id);
-      setPriceLists(data);
+      setPriceLists(data || []);
     } catch (err: any) {
       showToast.error('خطا در دریافت لیست‌های قیمت', err.message);
     } finally {
@@ -51,7 +51,7 @@ export function PriceListsPage() {
     setEditingPriceList(null);
     setName('');
     setDescription('');
-    setIsDefault(priceLists.length === 0);
+    setIsDefault((priceLists || []).length === 0);
     setIsModalOpen(true);
   };
 
@@ -181,7 +181,7 @@ export function PriceListsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {priceLists.map((pl) => (
+                {(priceLists || []).map((pl) => (
                   <tr
                     key={pl.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"

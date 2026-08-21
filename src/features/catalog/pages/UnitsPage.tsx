@@ -43,7 +43,7 @@ export function UnitsPage() {
     setIsLoading(true);
     try {
       const data = await unitService.getUnits(currentBusiness.id);
-      setUnits(data);
+      setUnits(data || []);
     } catch (err: any) {
       showToast.error('خطا در دریافت واحدها', err.message);
     } finally {
@@ -164,7 +164,7 @@ export function UnitsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {units.map((unit) => (
+                {(units || []).map((unit) => (
                   <tr
                     key={unit.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"

@@ -133,7 +133,7 @@ export function CustomerSupplierAnalytics({ customers = [], suppliers = [] }: Cu
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {filteredList.length > 0 ? (
+                    {(filteredList || []).length > 0 ? (
                       filteredList.map((item) => {
                         const isDebtor = item.balance > 0;
                         return (

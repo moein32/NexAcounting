@@ -41,8 +41,8 @@ export function DataTable<T extends Record<string, any>>({
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredData = React.useMemo(() => {
-    if (!searchTerm || !searchKey) return data;
-    return data.filter((item) => {
+    if (!searchTerm || !searchKey) return data || [];
+    return (data || []).filter((item) => {
       const val = item[searchKey];
       return String(val ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     });

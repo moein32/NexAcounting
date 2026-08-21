@@ -44,7 +44,7 @@ export function ChartOfAccountsPage() {
         setAccountType(parent.account_type);
         // Suggest a sub-code starting with parent code
         const siblings = accounts.filter(a => a.parent_id === parentId);
-        const nextIndex = siblings.length + 1;
+        const nextIndex = (siblings || []).length + 1;
         setCode(`${parent.code}${nextIndex.toString().padStart(2, '0')}`);
       }
     } else {
@@ -142,7 +142,7 @@ export function ChartOfAccountsPage() {
           <CardTitle>درختواره حسابداری دوبل ({currentBusiness.name})</CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          {level1Accounts.length === 0 ? (
+          {(level1Accounts || []).length === 0 ? (
             <p className="text-center text-xs text-slate-400 py-12">در حال بارگذاری ساختار حساب‌ها...</p>
           ) : (
             level1Accounts.map((parent) => {
@@ -168,7 +168,7 @@ export function ChartOfAccountsPage() {
 
                   {/* Level 2: Moeen Children */}
                   <div className="pr-6 space-y-2 border-r-2 border-indigo-100 dark:border-indigo-950/60 mr-2.5">
-                    {children.length === 0 ? (
+                    {(children || []).length === 0 ? (
                       <p className="text-[11px] text-slate-400 italic">هیچ حساب معینی تعریف نشده است.</p>
                     ) : (
                       children.map((sub) => (
@@ -237,7 +237,7 @@ export function ChartOfAccountsPage() {
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="">-- فاقد والد (ایجاد حساب تراز گروه کل) --</option>
-                  {level1Accounts.map(a => (
+                  {(level1Accounts || []).map(a => (
                     <option key={a.id} value={a.id}>
                       [{a.code}] {a.name} ({getAccountTypeLabel(a.account_type)})
                     </option>

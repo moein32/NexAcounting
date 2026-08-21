@@ -395,7 +395,7 @@ export function PurchaseDetailPage() {
               <span>تاریخچه وقایع تدارکاتی</span>
             </h3>
 
-            {Array.isArray(events) && events.length > 0 ? (
+            {Array.isArray(events) && (events || []).length > 0 ? (
               <div className="relative border-r-2 border-slate-200 dark:border-slate-800 pr-4 mr-2 space-y-4">
                 {(events || []).map((ev) => (
                   <div key={ev.id} className="relative">

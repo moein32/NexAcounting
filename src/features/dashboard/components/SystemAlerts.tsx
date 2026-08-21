@@ -19,7 +19,7 @@ interface SystemAlertsProps {
 }
 
 export function SystemAlerts({ lowStockItems = [], upcomingChecks = [], upcomingCommitments = [] }: SystemAlertsProps) {
-  const alertsCount = lowStockItems.length + upcomingChecks.length + upcomingCommitments.length;
+  const alertsCount = (lowStockItems || []).length + (upcomingChecks || []).length + (upcomingCommitments || []).length;
 
   return (
     <Card className="h-full border-amber-200/50 dark:border-amber-900/30">
@@ -38,11 +38,11 @@ export function SystemAlerts({ lowStockItems = [], upcomingChecks = [], upcoming
       <CardContent>
         <div className="space-y-4">
           {/* 1. Low Stock Alerts */}
-          {lowStockItems.length > 0 && (
+          {(lowStockItems || []).length > 0 && (
             <div className="space-y-2">
               <h3 className="text-[11px] font-bold text-rose-500 flex items-center gap-1.5 px-1">
                 <Package className="w-3.5 h-3.5" />
-                <span>کسری موجودی انبار ({lowStockItems.length} کالا)</span>
+                <span>کسری موجودی انبار ({(lowStockItems || []).length} کالا)</span>
               </h3>
               <div className="space-y-2">
                 {lowStockItems.slice(0, 3).map((item) => (
@@ -62,11 +62,11 @@ export function SystemAlerts({ lowStockItems = [], upcomingChecks = [], upcoming
           )}
 
           {/* 2. Upcoming Checks */}
-          {upcomingChecks.length > 0 && (
+          {(upcomingChecks || []).length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
               <h3 className="text-[11px] font-bold text-blue-500 flex items-center gap-1.5 px-1">
                 <Landmark className="w-3.5 h-3.5" />
-                <span>چک‌های سررسید نزدیک ({upcomingChecks.length} فقره)</span>
+                <span>چک‌های سررسید نزدیک ({(upcomingChecks || []).length} فقره)</span>
               </h3>
               <div className="space-y-2">
                 {upcomingChecks.slice(0, 3).map((check) => (
@@ -86,11 +86,11 @@ export function SystemAlerts({ lowStockItems = [], upcomingChecks = [], upcoming
           )}
 
           {/* 3. Upcoming Commitments */}
-          {upcomingCommitments.length > 0 && (
+          {(upcomingCommitments || []).length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
               <h3 className="text-[11px] font-bold text-amber-500 flex items-center gap-1.5 px-1">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>تعهدهای مالی سررسید شده ({upcomingCommitments.length} مورد)</span>
+                <span>تعهدهای مالی سررسید شده ({(upcomingCommitments || []).length} مورد)</span>
               </h3>
               <div className="space-y-2">
                 {upcomingCommitments.slice(0, 3).map((commit) => {

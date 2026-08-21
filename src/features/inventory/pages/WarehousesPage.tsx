@@ -77,7 +77,7 @@ export function WarehousesPage() {
       const physicalItems = itemsResponse.data.filter(i => i.item_type !== 'service' && i.track_inventory !== false);
       setCatalogItems(physicalItems);
 
-      if (whList.length > 0 && !selectedWh) {
+      if ((whList || []).length > 0 && !selectedWh) {
         setSelectedWh(whList[0]);
       } else if (selectedWh) {
         const updatedSelected = whList.find(w => w.id === selectedWh.id);
@@ -220,7 +220,7 @@ export function WarehousesPage() {
   };
 
   const removeDocItemField = (idx: number) => {
-    if (docForm.items.length <= 1) return;
+    if ((docForm.items || []).length <= 1) return;
     const items = [...docForm.items];
     items.splice(idx, 1);
     setDocForm({ ...docForm, items });
@@ -361,7 +361,7 @@ export function WarehousesPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {warehouses.map((w) => {
+              {(warehouses || []).map((w) => {
                 const isSelected = selectedWh?.id === w.id;
                 return (
                   <div
@@ -500,7 +500,7 @@ export function WarehousesPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2.5">
-                  {whLocations.length > 0 ? (
+                  {(whLocations || []).length > 0 ? (
                     whLocations.map((loc) => (
                       <div key={loc.id} className="px-3.5 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs flex items-center gap-2 hover:bg-gray-100 hover:border-gray-200 transition-all">
                         <span className="w-1.5 h-1.5 bg-gray-900 rounded-full" />
@@ -547,7 +547,7 @@ export function WarehousesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {filteredStock.length > 0 ? (
+                      {(filteredStock || []).length > 0 ? (
                         filteredStock.map((s) => {
                           const isLow = s.quantity < (s.min_stock || 0);
                           return (
@@ -789,7 +789,7 @@ export function WarehousesPage() {
                     className="w-full text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:ring-1 focus:ring-gray-950"
                   >
                     <option value="">انتخاب انبار...</option>
-                    {warehouses.map((w) => (
+                    {(warehouses || []).map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name}
                       </option>
@@ -866,7 +866,7 @@ export function WarehousesPage() {
                           className="w-full text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 outline-none"
                         >
                           <option value="">-- انتخاب کالا --</option>
-                          {catalogItems.map((ci) => (
+                          {(catalogItems || []).map((ci) => (
                             <option key={ci.id} value={ci.id}>
                               {ci.name} ({ci.code})
                             </option>
@@ -906,7 +906,7 @@ export function WarehousesPage() {
                         />
                       </div>
 
-                      {docForm.items.length > 1 && (
+                      {(docForm.items || []).length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeDocItemField(idx)}

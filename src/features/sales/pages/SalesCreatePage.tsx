@@ -105,7 +105,7 @@ export function SalesCreatePage() {
 
       const whs = await inventoryService.getWarehouses(bizId);
       setWarehouses(whs || []);
-      if (whs && whs.length > 0) {
+      if (whs && (whs || []).length > 0) {
         setWarehouseId(whs[0].id);
       }
 
@@ -129,7 +129,7 @@ export function SalesCreatePage() {
           setInternalNotes(docToEdit.internal_notes || '');
           setShippingTotal(docToEdit.shipping_total || 0);
 
-          if (docToEdit.items && docToEdit.items.length > 0) {
+          if (docToEdit.items && (docToEdit.items || []).length > 0) {
             const mappedLines = docToEdit.items.map((it) => ({
               item_id: it.item_id,
               item_name: it.description || 'کالای سفارشی',
@@ -237,7 +237,7 @@ export function SalesCreatePage() {
       return;
     }
 
-    if (lines.length === 0) {
+    if ((lines || []).length === 0) {
       alert('لطفا حداقل یک کالا به فاکتور اضافه کنید.');
       return;
     }
@@ -329,12 +329,12 @@ export function SalesCreatePage() {
             className={`flex-1 py-2 rounded-xl text-center transition-all ${
               activeStep === 2
                 ? 'bg-indigo-600 text-white shadow-xs'
-                : lines.length > 0
+                : (lines || []).length > 0
                 ? 'bg-emerald-500/10 text-emerald-600'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
             }`}
           >
-            ۲. کالاها ({lines.length})
+            ۲. کالاها ({(lines || []).length})
           </button>
 
           <ChevronLeft className="w-3 h-3 text-slate-300 shrink-0" />
@@ -417,7 +417,7 @@ export function SalesCreatePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <Select
                 label="انبار تحویل‌دهنده کالا"
-                options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+                options={(warehouses || []).map((w) => ({ value: w.id, label: w.name }))}
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
               />
@@ -457,7 +457,7 @@ export function SalesCreatePage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-indigo-600" />
-              <span>اقلام کالاها و خدمات فاکتور ({lines.length})</span>
+              <span>اقلام کالاها و خدمات فاکتور ({(lines || []).length})</span>
             </h3>
 
             <button
@@ -471,7 +471,7 @@ export function SalesCreatePage() {
           </div>
 
           {/* Lines Mobile Cards */}
-          {lines.length === 0 ? (
+          {(lines || []).length === 0 ? (
             <div
               onClick={() => setShowProductSheet(true)}
               className="p-8 text-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer"
@@ -486,7 +486,7 @@ export function SalesCreatePage() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {lines.map((line, idx) => (
+              {(lines || []).map((line, idx) => (
                 <div
                   key={idx}
                   className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -684,7 +684,7 @@ export function SalesCreatePage() {
       <ProductPickerSheet
         isOpen={showProductSheet}
         onClose={() => setShowProductSheet(false)}
-        selectedProductIds={lines.map((l) => l.item_id)}
+        selectedProductIds={(lines || []).map((l) => l.item_id)}
         onSelectProduct={handleAddProductFromSheet}
       />
 

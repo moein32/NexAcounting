@@ -129,7 +129,7 @@ export function LowStockPage() {
           <div>
             <span className="text-amber-800 text-xs font-semibold block">کالاهای نیازمند شارژ انبار</span>
             <span className="text-3xl font-extrabold text-amber-950 mt-1.5 block">
-              {lowStockList.length} <span className="text-sm font-normal text-amber-800">کالا</span>
+              {(lowStockList || []).length} <span className="text-sm font-normal text-amber-800">کالا</span>
             </span>
             <span className="text-xs text-amber-700 font-medium block mt-1">دارای موجودی کمتر از حد آستانه</span>
           </div>
@@ -180,7 +180,7 @@ export function LowStockPage() {
               className="text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white"
             >
               <option value="all">همه انبارها</option>
-              {warehouses.map((w) => (
+              {(warehouses || []).map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
@@ -236,7 +236,7 @@ export function LowStockPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredLowStock.length > 0 ? (
+                {(filteredLowStock || []).length > 0 ? (
                   filteredLowStock.map((item) => {
                     const deficit = Math.max(1, (item.min_stock || 0) - item.quantity);
                     return (

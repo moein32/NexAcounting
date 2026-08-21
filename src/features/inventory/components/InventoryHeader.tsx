@@ -97,7 +97,7 @@ export function InventoryHeader() {
 
       {/* Navigation tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pt-5 scrollbar-none">
-        {navItems.map((item) => {
+        {(navItems || []).map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           return (

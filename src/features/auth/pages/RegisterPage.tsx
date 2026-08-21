@@ -33,7 +33,7 @@ export function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
+    if ((password || []).length < 6) {
       setErrorMessage('رمز عبور باید حداقل ۶ کاراکتر باشد.');
       return;
     }

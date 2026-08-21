@@ -201,7 +201,7 @@ function getDemoPartiesFromStorage(businessId: string): Party[] {
       });
       return PartyRepository.getAll(businessId) as any[];
     }
-    return list.map(p => ({
+    return (list || []).map(p => ({
       ...p,
       display_name: p.name,
       party_type: 'individual',
@@ -639,7 +639,7 @@ export const partyService = {
 
       // 2. Insert party_roles
       const rolesToInsert = input.roles.length > 0 ? input.roles : ['customer'];
-      const roleRows = rolesToInsert.map((role) => ({
+      const roleRows = (rolesToInsert || []).map((role) => ({
         party_id: party.id,
         role,
       }));
@@ -678,7 +678,7 @@ export const partyService = {
 
       // 4. Insert Contacts if provided
       if (input.contacts && input.contacts.length > 0) {
-        const contactRows = input.contacts.map((c) => ({
+        const contactRows = (input.contacts || []).map((c) => ({
           party_id: party.id,
           name: c.name,
           position: c.position || null,
@@ -692,7 +692,7 @@ export const partyService = {
 
       // 5. Insert Addresses if provided
       if (input.addresses && input.addresses.length > 0) {
-        const addressRows = input.addresses.map((a) => ({
+        const addressRows = (input.addresses || []).map((a) => ({
           party_id: party.id,
           title: a.title || 'آدرس اصلی',
           address: a.address,
@@ -817,7 +817,7 @@ export const partyService = {
       // Update Roles if provided
       if (roles && roles.length > 0) {
         await supabase.from('party_roles').delete().eq('party_id', id);
-        const roleRows = roles.map((role) => ({
+        const roleRows = (roles || []).map((role) => ({
           party_id: id,
           role,
         }));
@@ -1159,7 +1159,7 @@ export const partyService = {
 
     // 6. Compute running balance
     let runningBalance = 0;
-    const ledger: PartyLedgerEntry[] = rawEntries.map((re) => {
+    const ledger: PartyLedgerEntry[] = (rawEntries || []).map((re) => {
       runningBalance = runningBalance + re.debit - re.credit;
       return {
         id: re.id,

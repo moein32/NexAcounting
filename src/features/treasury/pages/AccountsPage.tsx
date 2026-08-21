@@ -267,7 +267,7 @@ export function AccountsPage() {
 
       {/* Accounts List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {accounts.map((acc) => (
+        {(accounts || []).map((acc) => (
           <div 
             key={acc.id} 
             className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4 relative overflow-hidden"
@@ -322,7 +322,7 @@ export function AccountsPage() {
           </div>
         ))}
 
-        {accounts.length === 0 && (
+        {(accounts || []).length === 0 && (
           <div className="col-span-full bg-slate-50/50 border border-slate-100 rounded-2xl p-12 text-center text-slate-400">
             <Wallet className="w-12 h-12 mx-auto text-slate-300 mb-3" />
             <p className="text-xs font-bold">هیچ حساب یا صندوق مالی تعریف نشده است.</p>
@@ -447,7 +447,7 @@ export function AccountsPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500"
                 >
                   <option value="">انتخاب کنید...</option>
-                  {accounts.map((acc) => (
+                  {(accounts || []).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} (موجودی: {formatCurrency(acc.current_balance)} تومان)
                     </option>
@@ -463,7 +463,7 @@ export function AccountsPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500"
                 >
                   <option value="">انتخاب کنید...</option>
-                  {accounts.map((acc) => (
+                  {(accounts || []).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} (موجودی: {formatCurrency(acc.current_balance)} تومان)
                     </option>

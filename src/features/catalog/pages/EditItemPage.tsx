@@ -76,7 +76,7 @@ export function EditItemPage() {
           itemService.getItemById(currentBusiness.id, id),
         ]);
 
-        setCategories(cats);
+        setCategories(cats || []);
         setUnits(uns);
         setPriceLists(plists);
 
@@ -109,7 +109,7 @@ export function EditItemPage() {
         setIsActive(item.is_active);
 
         // Map existing item prices
-        const mappedPrices = plists.map((pl) => {
+        const mappedPrices = (plists || []).map((pl) => {
           const match = item.prices?.find((p) => p.price_list_id === pl.id);
           return {
             price_list_id: pl.id,
@@ -120,9 +120,9 @@ export function EditItemPage() {
         setPricesList(mappedPrices);
 
         // Map existing item attributes
-        if (item.attributes && item.attributes.length > 0) {
+        if (item.attributes && (item.attributes || []).length > 0) {
           setAttributes(
-            item.attributes.map((a) => ({
+            (item.attributes || []).map((a) => ({
               attribute_name: a.attribute_name,
               attribute_value: a.attribute_value,
             }))
@@ -294,7 +294,7 @@ export function EditItemPage() {
               </label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">-- بدون دسته‌بندی --</option>
-                {categories.map((c) => (
+                {(categories || []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.parent_name ? `${c.parent_name} > ${c.name}` : c.name}
                   </option>
@@ -308,7 +308,7 @@ export function EditItemPage() {
               </label>
               <Select value={unitId} onChange={(e) => setUnitId(e.target.value)}>
                 <option value="">-- انتخاب واحد --</option>
-                {units.map((u) => (
+                {(units || []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name} {u.symbol ? `(${u.symbol})` : ''}
                   </option>
@@ -395,12 +395,12 @@ export function EditItemPage() {
           </div>
 
           {/* Price Lists */}
-          {priceLists.length > 0 && (
+          {(priceLists || []).length > 0 && (
             <div className="mt-4 space-y-2">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                 قیمت در سایر لیست‌های قیمت:
               </label>
-              {priceLists.map((pl) => {
+              {(priceLists || []).map((pl) => {
                 const entry = pricesList.find((p) => p.price_list_id === pl.id);
                 return (
                   <div
@@ -443,11 +443,11 @@ export function EditItemPage() {
             </Button>
           </div>
 
-          {attributes.length === 0 ? (
+          {(attributes || []).length === 0 ? (
             <p className="text-xs text-slate-400">هیچ ویژگی فنی ثبت نشده است.</p>
           ) : (
             <div className="space-y-2">
-              {attributes.map((attr, idx) => (
+              {(attributes || []).map((attr, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <Input
                     placeholder="عنوان ویژگی (مثلاً: رنگ)"

@@ -157,7 +157,7 @@ export const MobileDashboard: React.FC<MobileDashboardProps> = ({ metrics, loadi
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {smartInsights.map((insight) => (
+          {(smartInsights || []).map((insight) => (
             <MetricCard
               key={insight.id}
               title={insight.title}

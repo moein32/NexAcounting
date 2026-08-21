@@ -150,12 +150,12 @@ export function GlobalSearchView({ businessId }: GlobalSearchViewProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-bold text-slate-500">
-              نتایج یافت‌شده ({results.length} مورد)
+              نتایج یافت‌شده ({(results || []).length} مورد)
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {results.length > 0 ? (
+              {(results || []).length > 0 ? (
                 results.map((item) => (
                   <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 text-xs">
                     <div className="flex items-center gap-3 truncate">

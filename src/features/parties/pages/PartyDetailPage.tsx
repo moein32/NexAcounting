@@ -70,7 +70,7 @@ export function PartyDetailPage() {
       try {
         const data = await partyService.getPartyById(currentBusiness.id, id);
         if (data) {
-          setParty(data);
+          setParty(data || []);
           const entries = await partyService.getPartyLedger(currentBusiness.id, id);
           setLedgerEntries(entries);
 
@@ -144,11 +144,11 @@ export function PartyDetailPage() {
     { id: 'contacts', label: 'رابطین و مدیران', icon: <Phone className="w-4 h-4" />, badge: party.contacts?.length || 0 },
     { id: 'addresses', label: 'آدرس‌ها', icon: <MapPin className="w-4 h-4" />, badge: party.addresses?.length || 0 },
     { id: 'financial', label: 'تنظیمات مالی', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'ledger', label: 'دفتر معین (Ledger)', icon: <BookOpen className="w-4 h-4" />, badge: ledgerEntries.length },
-    { id: 'sales', label: 'فاکتورهای فروش', icon: <ShoppingBag className="w-4 h-4" />, badge: salesDocs.length },
-    { id: 'purchases', label: 'فاکتورهای خرید', icon: <Truck className="w-4 h-4" />, badge: purchaseDocs.length },
-    { id: 'payments', label: 'دریافت و پرداخت', icon: <ReceiptIcon className="w-4 h-4" />, badge: receipts.length + payments.length },
-    { id: 'checks', label: 'چک‌ها', icon: <Wallet className="w-4 h-4" />, badge: checks.length },
+    { id: 'ledger', label: 'دفتر معین (Ledger)', icon: <BookOpen className="w-4 h-4" />, badge: (ledgerEntries || []).length },
+    { id: 'sales', label: 'فاکتورهای فروش', icon: <ShoppingBag className="w-4 h-4" />, badge: (salesDocs || []).length },
+    { id: 'purchases', label: 'فاکتورهای خرید', icon: <Truck className="w-4 h-4" />, badge: (purchaseDocs || []).length },
+    { id: 'payments', label: 'دریافت و پرداخت', icon: <ReceiptIcon className="w-4 h-4" />, badge: (receipts || []).length + (payments || []).length },
+    { id: 'checks', label: 'چک‌ها', icon: <Wallet className="w-4 h-4" />, badge: (checks || []).length },
   ];
 
   const getDocTypeLabel = (type: string) => {
@@ -173,7 +173,7 @@ export function PartyDetailPage() {
     }
   };
 
-  const currentTotalBalance = ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0;
+  const currentTotalBalance = (ledgerEntries || []).length > 0 ? ledgerEntries[(ledgerEntries || []).length - 1].balance : 0;
 
   return (
     <div className="space-y-6">
@@ -441,7 +441,7 @@ export function PartyDetailPage() {
             <span>لیست افراد رابط و مدیران</span>
           </h3>
 
-          {!party.contacts || party.contacts.length === 0 ? (
+          {!party.contacts || (party.contacts || []).length === 0 ? (
             <EmptyState
               title="هیچ فرد رابطی ثبت نشده است"
               description="می‌توانید از طریق ویرایش طرف حساب، مدیران یا رابطین شرکت را اضافه نمایید."
@@ -580,7 +580,7 @@ export function PartyDetailPage() {
             </span>
           </div>
 
-          {ledgerEntries.length === 0 ? (
+          {(ledgerEntries || []).length === 0 ? (
             <EmptyState
               title="هیچ تراکنشی برای این طرف حساب ثبت نشده است"
               description="با ثبت فاکتور، پرداخت یا دریافت وجه، گردش حساب طرف حساب در اینجا نمایش داده می‌شود."
@@ -599,7 +599,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledgerEntries.map((entry) => (
+                {(ledgerEntries || []).map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-mono text-xs">{entry.date}</TableCell>
                     <TableCell>
@@ -642,7 +642,7 @@ export function PartyDetailPage() {
             </Button>
           </div>
 
-          {salesDocs.length === 0 ? (
+          {(salesDocs || []).length === 0 ? (
             <EmptyState
               title="هیچ فاکتور فروشی برای این مشتری ثبت نشده است"
               description="جهت صدور فاکتور یا پیش‌فاکتور فروش برای این طرف حساب، از دکمه بالا استفاده نمایید."
@@ -661,7 +661,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salesDocs.map((doc) => (
+                {(salesDocs || []).map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="font-mono font-bold text-xs">{doc.document_number}</TableCell>
                     <TableCell>{getDocTypeLabel(doc.document_type)}</TableCell>
@@ -703,7 +703,7 @@ export function PartyDetailPage() {
             </Button>
           </div>
 
-          {purchaseDocs.length === 0 ? (
+          {(purchaseDocs || []).length === 0 ? (
             <EmptyState
               title="هیچ فاکتور خریدی برای این تامین‌کننده ثبت نشده است"
               description="جهت ثبت فاکتور یا سفارش خرید از این طرف حساب، از دکمه بالا استفاده نمایید."
@@ -722,7 +722,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchaseDocs.map((doc) => (
+                {(purchaseDocs || []).map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="font-mono font-bold text-xs">{doc.document_number}</TableCell>
                     <TableCell>{getDocTypeLabel(doc.document_type)}</TableCell>
@@ -765,7 +765,7 @@ export function PartyDetailPage() {
             </div>
           </div>
 
-          {receipts.length === 0 && payments.length === 0 ? (
+          {(receipts || []).length === 0 && (payments || []).length === 0 ? (
             <EmptyState
               title="هیچ دریافت یا پرداختی ثبت نشده است"
               description="سوابق دریافت وجه از مشتری یا پرداخت وجه به تامین‌کننده در این بخش نمایش داده می‌شوند."
@@ -783,7 +783,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receipts.map((r) => (
+                {(receipts || []).map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>
                       <Badge variant="success">دریافت وجه (نقد/بانک)</Badge>
@@ -794,7 +794,7 @@ export function PartyDetailPage() {
                     <TableCell><Badge variant="success">ثبت شده</Badge></TableCell>
                   </TableRow>
                 ))}
-                {payments.map((p) => (
+                {(payments || []).map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
                       <Badge variant="warning">پرداخت وجه</Badge>
@@ -829,7 +829,7 @@ export function PartyDetailPage() {
             </div>
           </div>
 
-          {checks.length === 0 ? (
+          {(checks || []).length === 0 ? (
             <EmptyState
               title="هیچ چکی برای این طرف حساب ثبت نشده است"
               description="چک‌های دریافتی از مشتری یا چک‌های صادره به تامین‌کننده در این بخش لیست می‌شوند."
@@ -848,7 +848,7 @@ export function PartyDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {checks.map((c) => (
+                {(checks || []).map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono font-bold text-xs">{c.check_number}</TableCell>
                     <TableCell>

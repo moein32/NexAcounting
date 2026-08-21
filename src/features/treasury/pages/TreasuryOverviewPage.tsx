@@ -241,7 +241,7 @@ export function TreasuryOverviewPage() {
           </div>
 
           <div className="space-y-3">
-            {accounts.map((acc) => (
+            {(accounts || []).map((acc) => (
               <div 
                 key={acc.id} 
                 className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:border-slate-200 transition-all cursor-pointer"
@@ -264,7 +264,7 @@ export function TreasuryOverviewPage() {
               </div>
             ))}
 
-            {accounts.length === 0 && (
+            {(accounts || []).length === 0 && (
               <div className="text-center p-8 text-slate-400 text-xs">حسابی پیدا نشد.</div>
             )}
           </div>
@@ -322,7 +322,7 @@ export function TreasuryOverviewPage() {
               </div>
             ))}
 
-            {transactions.length === 0 && (
+            {(transactions || []).length === 0 && (
               <div className="text-center py-12 text-slate-400">
                 <Activity className="w-12 h-12 mx-auto text-slate-200 mb-2" />
                 <p className="text-xs">تاکنون هیچ گردش مالی در کاردکس ثبت نشده است.</p>

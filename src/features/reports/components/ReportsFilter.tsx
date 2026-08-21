@@ -108,7 +108,7 @@ export function ReportsFilter({
                 className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
                 <option value="all">همه طرف حساب‌ها</option>
-                {filteredParties.map(p => (
+                {(filteredParties || []).map(p => (
                   <option key={p.id} value={p.id}>{p.display_name || p.name}</option>
                 ))}
               </select>

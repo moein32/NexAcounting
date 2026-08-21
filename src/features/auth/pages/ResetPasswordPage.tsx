@@ -30,7 +30,7 @@ export function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 6) {
+    if ((password || []).length < 6) {
       setErrorMessage('رمز عبور جدید باید حداقل ۶ کاراکتر باشد.');
       return;
     }

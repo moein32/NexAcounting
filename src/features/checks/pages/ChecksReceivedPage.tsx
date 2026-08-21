@@ -324,7 +324,7 @@ export function ChecksReceivedPage() {
           onClick={() => setStatusFilter('all')}
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
         >
-          همه چک‌ها ({checks.length})
+          همه چک‌ها ({(checks || []).length})
         </button>
         <button 
           onClick={() => setStatusFilter('pending')}
@@ -348,7 +348,7 @@ export function ChecksReceivedPage() {
 
       {/* Mobile-First Grid list */}
       <div className="block md:hidden space-y-4">
-        {filteredChecks.map((row, idx) => (
+        {(filteredChecks || []).map((row, idx) => (
           <div key={row.id} className="bg-white dark:bg-slate-950 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-3 shadow-sm">
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-mono text-slate-400">شماره: {row.check_number} • {row.bank_name}</span>
@@ -384,7 +384,7 @@ export function ChecksReceivedPage() {
           </div>
         ))}
 
-        {filteredChecks.length === 0 && (
+        {(filteredChecks || []).length === 0 && (
           <div className="bg-slate-50/50 rounded-2xl p-8 text-center text-slate-400">هیچ چکی یافت نشد.</div>
         )}
       </div>
@@ -432,7 +432,7 @@ export function ChecksReceivedPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-blue-500"
                 >
                   <option value="">انتخاب مشتری...</option>
-                  {parties.map((p) => (
+                  {(parties || []).map((p) => (
                     <option key={p.id} value={p.id}>{p.name} (کد: {p.code})</option>
                   ))}
                 </select>
@@ -554,7 +554,7 @@ export function ChecksReceivedPage() {
                   className="w-full text-sm text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500"
                 >
                   <option value="">انتخاب حساب مقصد...</option>
-                  {accounts.map((acc) => (
+                  {(accounts || []).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} (موجودی فعلی: {formatCurrency(acc.current_balance)} تومان)
                     </option>

@@ -14,10 +14,10 @@ interface IncomeExpenseChartProps {
 }
 
 export const IncomeExpenseChart = React.memo(function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
-  const chartData = data && data.length > 0 ? data : MOCK_INCOME_EXPENSE_DATA;
+  const chartData = data && (data || []).length > 0 ? data : MOCK_INCOME_EXPENSE_DATA;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && (payload || []).length) {
       return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg text-xs space-y-1.5">
           <p className="font-bold text-slate-900 dark:text-slate-100">{label}</p>

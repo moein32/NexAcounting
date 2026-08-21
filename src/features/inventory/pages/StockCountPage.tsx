@@ -126,7 +126,7 @@ export function StockCountPage() {
       setIsLoading(true);
       try {
         const balances = await inventoryService.getWarehouseStock(businessId, wizardForm.warehouseId);
-        if (balances.length === 0) {
+        if ((balances || []).length === 0) {
           setErrorMsg('انبار انتخاب شده در حال حاضر فاقد موجودی اولیه ثبت شده برای کالاهاست. کماکان می‌توانید انبارگردانی انجام دهید.');
         }
 
@@ -248,7 +248,7 @@ export function StockCountPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {stockCounts.length > 0 ? (
+                {(stockCounts || []).length > 0 ? (
                   stockCounts.map((sc) => (
                     <tr key={sc.id} className="hover:bg-gray-50/40 transition-colors">
                       <td className="py-4 pr-6 text-gray-900 font-mono text-xs font-bold">{sc.count_number}</td>
@@ -461,7 +461,7 @@ export function StockCountPage() {
                       className="w-full text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white"
                     >
                       <option value="">-- انتخاب انبار هدف --</option>
-                      {warehouses.map((w) => (
+                      {(warehouses || []).map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.name}
                         </option>
@@ -512,7 +512,7 @@ export function StockCountPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {wizardBalances.map((b, idx) => (
+                      {(wizardBalances || []).map((b, idx) => (
                         <tr key={b.itemId}>
                           <td className="py-2 pr-4 font-bold text-gray-800">
                             <span>{b.itemName}</span>
@@ -555,7 +555,7 @@ export function StockCountPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {wizardBalances.map((b) => (
+                      {(wizardBalances || []).map((b) => (
                         <tr key={b.itemId} className={b.variance !== 0 ? 'bg-amber-50/10' : ''}>
                           <td className="py-2 pr-4 font-semibold text-gray-800">{b.itemName}</td>
                           <td className="py-2 text-left font-mono">{b.systemQuantity}</td>

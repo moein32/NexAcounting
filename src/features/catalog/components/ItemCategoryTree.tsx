@@ -45,7 +45,7 @@ function CategoryTreeNode({
 
   // Find direct child categories
   const children = allCategories.filter((c) => c.parent_id === category.id);
-  const hasChildren = children.length > 0;
+  const hasChildren = (children || []).length > 0;
 
   return (
     <div className="select-none">
@@ -154,7 +154,7 @@ function CategoryTreeNode({
 
       {hasChildren && isOpen && (
         <div className="mt-2 space-y-2 relative before:absolute before:right-3 before:top-0 before:bottom-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-          {children.map((child) => (
+          {(children || []).map((child) => (
             <CategoryTreeNode
               key={child.id}
               category={child}
@@ -184,13 +184,13 @@ export function ItemCategoryTree({
     (c) => !c.parent_id || !categories.some((p) => p.id === c.parent_id)
   );
 
-  if (categories.length === 0) {
+  if ((categories || []).length === 0) {
     return null;
   }
 
   return (
     <div className="space-y-3">
-      {rootCategories.map((cat) => (
+      {(rootCategories || []).map((cat) => (
         <CategoryTreeNode
           key={cat.id}
           category={cat}

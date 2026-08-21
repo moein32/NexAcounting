@@ -40,7 +40,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && (payload || []).length) {
       return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg text-xs">
           <p className="font-bold text-slate-900 dark:text-slate-100">{label}</p>
@@ -133,7 +133,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
         </CardHeader>
         <CardContent className="pt-4">
           <div className="h-64 w-full">
-            {data.dailySales.length > 0 ? (
+            {(data.dailySales || []).length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.dailySales} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -168,7 +168,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.productsBreakdown.length > 0 ? (
+              {(data.productsBreakdown || []).length > 0 ? (
                 data.productsBreakdown.slice(0, 5).map((prod, index) => (
                   <div key={prod.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div className="flex items-center gap-2.5">
@@ -201,7 +201,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.customersBreakdown.length > 0 ? (
+              {(data.customersBreakdown || []).length > 0 ? (
                 data.customersBreakdown.slice(0, 5).map((cust, index) => (
                   <div key={cust.id} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                     <div className="flex items-center gap-2.5">
@@ -228,7 +228,7 @@ export function SalesReportView({ data, onPrint, onExportCSV }: SalesReportViewP
       </div>
 
       {/* Profitability Per Invoice Section */}
-      {data.invoicesWithProfit && data.invoicesWithProfit.length > 0 && (
+      {data.invoicesWithProfit && (data.invoicesWithProfit || []).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-bold">تحلیل سود فاکتورهای فروش صادر شده</CardTitle>

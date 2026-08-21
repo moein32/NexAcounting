@@ -328,7 +328,7 @@ export function ExportCenterPage() {
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
                   >
                     <option value="all">همه انبارها (کامل)</option>
-                    {warehouses.map((w) => (
+                    {(warehouses || []).map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name} ({w.code})
                       </option>
@@ -467,9 +467,9 @@ export function ExportCenterPage() {
               <div className="space-y-6">
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
                   <span>
-                    تعداد سطر یافت شده در اکسل: <strong>{parsedFile.rows.length} سطر</strong>
+                    تعداد سطر یافت شده در اکسل: <strong>{(parsedFile.rows || []).length} سطر</strong>
                   </span>
-                  <span>ستون‌های شناسایی‌شده: {parsedFile.columns.length} ستون</span>
+                  <span>ستون‌های شناسایی‌شده: {(parsedFile.columns || []).length} ستون</span>
                 </div>
 
                 <div>

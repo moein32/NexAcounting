@@ -27,7 +27,7 @@ export function DashboardPage() {
     setLoading(true);
     try {
       const data = await DashboardDataService.getMetrics(currentBusiness.id, forceRefresh);
-      setMetrics(data);
+      setMetrics(data || []);
     } catch (e) {
       console.error('Error fetching dashboard business intelligence data', e);
     } finally {

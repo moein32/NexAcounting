@@ -35,20 +35,47 @@ export interface Party {
   updated_at?: string;
 }
 
+export interface ItemCategory {
+  id: string;
+  business_id: string;
+  parent_id?: string | null;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Item {
   id: string;
   business_id: string;
+  item_type?: 'product' | 'service';
   name: string;
-  code: string;
-  type: 'product' | 'service';
-  category_id?: string;
-  unit_id?: string;
-  purchase_price: number;
-  sale_price: number;
-  barcode?: string;
-  is_active: boolean;
+  code?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  category_id?: string | null;
+  unit_id?: string | null;
+  description?: string | null;
+  short_description?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  purchase_price?: number;
+  default_sale_price?: number;
+  tax_rate?: number;
+  default_discount_percent?: number;
+  min_stock?: number;
+  max_stock?: number | null;
+  track_inventory?: boolean;
+  is_active?: boolean;
+  image_url?: string | null;
+  created_by?: string | null;
   created_at?: string;
   updated_at?: string;
+
+  // Optional legacy fields for perfect backward compatibility
+  type?: 'product' | 'service';
+  sale_price?: number;
 }
 
 export interface Warehouse {
@@ -218,19 +245,21 @@ export const ItemRepository = {
 
   getPaginated(
     businessId: string,
-    options?: { page?: number; limit?: number; type?: 'product' | 'service'; categoryId?: string; search?: string }
+    options?: { page?: number; limit?: number; item_type?: 'product' | 'service'; type?: 'product' | 'service'; categoryId?: string; search?: string }
   ) {
+    const targetType = options?.item_type || options?.type;
     return db.queryPaginated<Item>('items', businessId, {
       page: options?.page,
       limit: options?.limit,
       filterFn: (i) => {
-        if (options?.type && i.type !== options.type) return false;
+        const itemType = i.item_type || i.type;
+        if (targetType && itemType !== targetType) return false;
         if (options?.categoryId && i.category_id !== options.categoryId) return false;
         if (options?.search) {
           const q = options.search.toLowerCase();
           return (
             i.name.toLowerCase().includes(q) ||
-            i.code.toLowerCase().includes(q) ||
+            (i.code && i.code.toLowerCase().includes(q)) ||
             (i.barcode && i.barcode.includes(q))
           );
         }
@@ -267,6 +296,29 @@ export const ItemRepository = {
 
   createUnit(unit: { id?: string; name: string; business_id: string }): any {
     return db.insertRecord<any>('units', unit);
+  },
+};
+
+// 3.5. CategoryRepository
+export const CategoryRepository = {
+  getAll(businessId: string): ItemCategory[] {
+    return db.queryByBusiness<ItemCategory>('categories', businessId);
+  },
+
+  getById(id: string): ItemCategory | null {
+    return db.queryById<ItemCategory>('categories', id);
+  },
+
+  create(category: Omit<ItemCategory, 'id'> & { id?: string }): ItemCategory {
+    return db.insertRecord<ItemCategory>('categories', category);
+  },
+
+  update(id: string, updates: Partial<ItemCategory>): ItemCategory {
+    return db.updateRecord<ItemCategory>('categories', id, updates);
+  },
+
+  delete(id: string): boolean {
+    return db.deleteRecord('categories', id);
   },
 };
 

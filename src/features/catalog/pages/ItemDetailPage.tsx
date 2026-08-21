@@ -403,7 +403,7 @@ export function ItemDetailPage() {
             قیمت کالا در لیست‌های مختلف قیمت
           </h3>
 
-          {!item.prices || item.prices.length === 0 ? (
+          {!item.prices || (item.prices || []).length === 0 ? (
             <p className="text-xs text-slate-500 py-4">قیمت جداگانه‌ای برای لیست‌های متفرقه تعریف نشده است.</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
@@ -443,7 +443,7 @@ export function ItemDetailPage() {
             ویژگی‌ها و مشخصات فنی کالا
           </h3>
 
-          {!item.attributes || item.attributes.length === 0 ? (
+          {!item.attributes || (item.attributes || []).length === 0 ? (
             <p className="text-xs text-slate-500 py-4">هیچ ویژگی فنی برای این کالا ثبت نشده است.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

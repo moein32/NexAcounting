@@ -90,7 +90,7 @@ export function PartiesListPage({
       };
 
       const result = await partyService.getParties(currentBusiness.id, filters);
-      setParties(result.data);
+      setParties(result.data || []);
       setTotalCount(result.count);
     } catch (err: any) {
       showToast.error(err.message || 'خطا در بارگیری اطلاعات طرف‌های حساب');
@@ -222,7 +222,7 @@ export function PartiesListPage({
       {/* Main Content Area */}
       {isLoading ? (
         <LoadingState text="در حال بارگیری طرف‌های حساب..." />
-      ) : parties.length === 0 ? (
+      ) : (parties || []).length === 0 ? (
         <Card className="p-8">
           <EmptyState
             title="هیچ طرف حسابی یافت نشد"
@@ -265,7 +265,7 @@ export function PartiesListPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parties.map((party) => (
+                  {(parties || []).map((party) => (
                     <TableRow key={party.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <TableCell className="font-bold text-slate-900 dark:text-white">
                         <div className="flex flex-col">
@@ -352,7 +352,7 @@ export function PartiesListPage({
 
           {/* Mobile Card List View */}
           <div className="grid grid-cols-1 gap-3 md:hidden">
-            {parties.map((party) => (
+            {(parties || []).map((party) => (
               <Card key={party.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
@@ -414,7 +414,7 @@ export function PartiesListPage({
           {/* Pagination Controls */}
           <div className="flex items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
             <span className="text-slate-500">
-              نمایش {parties.length} از {totalCount} طرف حساب
+              نمایش {(parties || []).length} از {totalCount} طرف حساب
             </span>
 
             <div className="flex items-center gap-2">

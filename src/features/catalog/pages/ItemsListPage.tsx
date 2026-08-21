@@ -246,7 +246,7 @@ export function ItemsListPage({
       {/* Main Table / Grid */}
       {isLoading ? (
         <LoadingState text="در حال دریافت فهرست کالاها و خدمات..." />
-      ) : items.length === 0 ? (
+      ) : (items || []).length === 0 ? (
         <Card className="p-8 rounded-3xl">
           <EmptyState
             title="هیچ کالا یا خدمتی یافت نشد"

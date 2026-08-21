@@ -33,7 +33,7 @@ export const RecentTransactions = React.memo(function RecentTransactions({ trans
     payment: <Badge variant="danger">پرداخت</Badge>,
   };
 
-  const list = transactions && transactions.length > 0 ? transactions : MOCK_RECENT_TRANSACTIONS;
+  const list = transactions && (transactions || []).length > 0 ? transactions : MOCK_RECENT_TRANSACTIONS;
 
   return (
     <Card>
@@ -48,7 +48,7 @@ export const RecentTransactions = React.memo(function RecentTransactions({ trans
       </CardHeader>
       <CardContent>
         <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-          {list.map((tx) => (
+          {(list || []).map((tx) => (
             <div key={tx.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 px-2 rounded-xl transition-colors">
               <div className="flex items-center gap-3 truncate">
                 <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">

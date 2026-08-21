@@ -34,7 +34,7 @@ export function CommitmentsScheduler({ businessId, onRefresh }: CommitmentsSched
     setCommitments(list);
     const accounts = TreasuryRepository.getAccounts(businessId);
     setCashAccounts(accounts);
-    if (accounts.length > 0) {
+    if ((accounts || []).length > 0) {
       setSelectedAccountId(accounts[0].id);
     }
   };
@@ -217,7 +217,7 @@ export function CommitmentsScheduler({ businessId, onRefresh }: CommitmentsSched
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {commitments.length > 0 ? (
+                {(commitments || []).length > 0 ? (
                   commitments
                     .sort((a, b) => a.due_date.localeCompare(b.due_date))
                     .map((item) => {
@@ -329,7 +329,7 @@ export function CommitmentsScheduler({ businessId, onRefresh }: CommitmentsSched
                   onChange={(e) => setSelectedAccountId(e.target.value)}
                   className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:border-blue-500"
                 >
-                  {cashAccounts.map(acc => (
+                  {(cashAccounts || []).map(acc => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} (موجودی: {formatCurrency(acc.current_balance, 'تومان')})
                     </option>

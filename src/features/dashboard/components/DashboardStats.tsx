@@ -62,7 +62,7 @@ export const DashboardStats = React.memo(function DashboardStats({ metrics }: Da
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {primaryStats.map((stat) => (
+      {(primaryStats || []).map((stat) => (
         <StatCard key={stat.id} data={stat} />
       ))}
     </div>
@@ -109,7 +109,7 @@ export const SecondaryDashboardStats = React.memo(function SecondaryDashboardSta
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {secondaryStats.map((stat) => (
+      {(secondaryStats || []).map((stat) => (
         <StatCard key={stat.id} data={stat} />
       ))}
     </div>

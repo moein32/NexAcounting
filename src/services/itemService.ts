@@ -247,32 +247,30 @@ const INITIAL_DEMO_ITEMS: Item[] = [
   },
 ];
 
-import { ItemRepository } from '../repositories';
+import { ItemRepository, CategoryRepository } from '../repositories';
 
 function getDemoItemsFromStorage(businessId: string): Item[] {
   try {
     const list = ItemRepository.getAll(businessId) as any[];
-    if (list.length === 0 && (businessId === 'demo_biz_1' || businessId === 'biz_main')) {
-      INITIAL_DEMO_ITEMS.forEach((i) => {
-        ItemRepository.create({
-          ...i,
-          business_id: businessId,
-          type: i.item_type as 'product' | 'service',
-          sale_price: i.default_sale_price || 0,
-        } as any);
-      });
-      return ItemRepository.getAll(businessId) as any[];
-    }
-    return list.map(item => ({
-      ...item,
-      item_type: item.type || 'product',
-      default_sale_price: item.sale_price || 0,
-      tax_rate: 10,
-      default_discount_percent: 0,
-      track_inventory: true,
-    })) as any[];
+    const categoriesList = CategoryRepository.getAll(businessId);
+    const unitsList = ItemRepository.getUnits();
+
+    return (list || []).map(item => {
+      const category = categoriesList.find((c) => c.id === item.category_id) || null;
+      const unit = unitsList.find((u) => u.id === item.unit_id) || null;
+      return {
+        ...item,
+        item_type: item.item_type || item.type || 'product',
+        default_sale_price: item.default_sale_price !== undefined ? item.default_sale_price : (item.sale_price || 0),
+        tax_rate: item.tax_rate !== undefined ? item.tax_rate : 0,
+        default_discount_percent: item.default_discount_percent !== undefined ? item.default_discount_percent : 0,
+        track_inventory: item.track_inventory !== undefined ? item.track_inventory : (item.item_type === 'product'),
+        category,
+        unit,
+      };
+    }) as any[];
   } catch {
-    return ItemRepository.getAll(businessId) as any[];
+    return [];
   }
 }
 
@@ -651,7 +649,7 @@ export const itemService = {
 
       // Insert Prices
       if (input.prices && input.prices.length > 0) {
-        const priceRows = input.prices.map((p) => ({
+        const priceRows = (input.prices || []).map((p) => ({
           item_id: item.id,
           price_list_id: p.price_list_id,
           price: Number(p.price) || 0,
@@ -662,7 +660,7 @@ export const itemService = {
 
       // Insert Attributes
       if (input.attributes && input.attributes.length > 0) {
-        const attrRows = input.attributes.map((a) => ({
+        const attrRows = (input.attributes || []).map((a) => ({
           item_id: item.id,
           attribute_name: a.attribute_name,
           attribute_value: a.attribute_value,
@@ -718,7 +716,7 @@ export const itemService = {
       };
 
       if (input.prices) {
-        updated.prices = input.prices.map((p, i) => ({
+        updated.prices = (input.prices || []).map((p, i) => ({
           id: `ip_${Date.now()}_${i}`,
           item_id: itemId,
           price_list_id: p.price_list_id,
@@ -728,7 +726,7 @@ export const itemService = {
       }
 
       if (input.attributes) {
-        updated.attributes = input.attributes.map((a, i) => ({
+        updated.attributes = (input.attributes || []).map((a, i) => ({
           id: `ia_${Date.now()}_${i}`,
           item_id: itemId,
           attribute_name: a.attribute_name,
@@ -774,7 +772,7 @@ export const itemService = {
       if (input.prices) {
         await supabase.from('item_prices').delete().eq('item_id', itemId);
         if (input.prices.length > 0) {
-          const priceRows = input.prices.map((p) => ({
+          const priceRows = (input.prices || []).map((p) => ({
             item_id: itemId,
             price_list_id: p.price_list_id,
             price: Number(p.price) || 0,
@@ -788,7 +786,7 @@ export const itemService = {
       if (input.attributes) {
         await supabase.from('item_attributes').delete().eq('item_id', itemId);
         if (input.attributes.length > 0) {
-          const attrRows = input.attributes.map((a) => ({
+          const attrRows = (input.attributes || []).map((a) => ({
             item_id: itemId,
             attribute_name: a.attribute_name,
             attribute_value: a.attribute_value,
@@ -932,7 +930,7 @@ export const itemService = {
     try {
       await supabase.from('item_prices').delete().eq('item_id', itemId);
       if (prices.length > 0) {
-        const rows = prices.map((p) => ({
+        const rows = (prices || []).map((p) => ({
           item_id: itemId,
           price_list_id: p.price_list_id,
           price: p.price,

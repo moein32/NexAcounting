@@ -25,7 +25,7 @@ export function EditPartyPage() {
       setIsLoading(true);
       try {
         const data = await partyService.getPartyById(currentBusiness.id, id);
-        setParty(data);
+        setParty(data || []);
       } catch (err) {
         console.error('Error loading party for edit:', err);
       } finally {
