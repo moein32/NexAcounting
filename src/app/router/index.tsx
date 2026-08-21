@@ -40,7 +40,6 @@ import { EditPartyPage } from '../../features/parties/pages/EditPartyPage';
 import { PartyDetailPage } from '../../features/parties/pages/PartyDetailPage';
 
 // Catalog & Items Management
-import { ItemsListPage } from '../../features/catalog/pages/ItemsListPage';
 import { ProductsListPage } from '../../features/catalog/pages/ProductsListPage';
 import { ServicesListPage } from '../../features/catalog/pages/ServicesListPage';
 import { CreateItemPage } from '../../features/catalog/pages/CreateItemPage';
@@ -49,6 +48,15 @@ import { EditItemPage } from '../../features/catalog/pages/EditItemPage';
 import { CategoriesPage } from '../../features/catalog/pages/CategoriesPage';
 import { UnitsPage } from '../../features/catalog/pages/UnitsPage';
 import { PriceListsPage } from '../../features/catalog/pages/PriceListsPage';
+
+function ItemsCrashTest() {
+  return (
+    <div className="p-8">
+      <h1>Items Runtime Test</h1>
+      <p>Items route is working.</p>
+    </div>
+  );
+}
 
 // Legacy Products & Inventory
 import { ProductsPage } from '../../features/products/pages/ProductsPage';
@@ -136,7 +144,7 @@ export function AppRouter() {
         <Route path="/parties/:id/edit" element={<EditPartyPage />} />
 
         {/* Catalog & Items Management */}
-        <Route path="/items" element={<ItemsListPage />} />
+        <Route path="/items" element={<ItemsCrashTest />} />
         <Route path="/items/products" element={<ProductsListPage />} />
         <Route path="/items/services" element={<ServicesListPage />} />
         <Route path="/items/new" element={<CreateItemPage />} />
