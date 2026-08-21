@@ -179,12 +179,13 @@ export function ItemCategoryTree({
   onDeactivateCategory,
   onDeleteCategory,
 }: ItemCategoryTreeProps) {
+  const safeCategories = categories || [];
   // Top-level categories (parent_id is null or not found in list)
-  const rootCategories = categories.filter(
-    (c) => !c.parent_id || !categories.some((p) => p.id === c.parent_id)
+  const rootCategories = safeCategories.filter(
+    (c) => !c.parent_id || !safeCategories.some((p) => p.id === c.parent_id)
   );
 
-  if ((categories || []).length === 0) {
+  if (safeCategories.length === 0) {
     return null;
   }
 
@@ -194,7 +195,7 @@ export function ItemCategoryTree({
         <CategoryTreeNode
           key={cat.id}
           category={cat}
-          allCategories={categories}
+          allCategories={safeCategories}
           level={0}
           onAddSubcategory={onAddSubcategory}
           onEditCategory={onEditCategory}

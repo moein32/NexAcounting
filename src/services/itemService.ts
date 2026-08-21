@@ -251,26 +251,42 @@ import { ItemRepository, CategoryRepository } from '../repositories';
 
 function getDemoItemsFromStorage(businessId: string): Item[] {
   try {
-    const list = ItemRepository.getAll(businessId) as any[];
+    let list = ItemRepository.getAll(businessId) as any[];
+    if (!list || list.length === 0) {
+      INITIAL_DEMO_ITEMS.forEach((item) => {
+        ItemRepository.create({
+          ...item,
+          business_id: businessId,
+          type: item.item_type as 'product' | 'service',
+          sale_price: item.default_sale_price || 0,
+        } as any);
+      });
+      list = ItemRepository.getAll(businessId) as any[];
+    }
+
     const categoriesList = CategoryRepository.getAll(businessId);
     const unitsList = ItemRepository.getUnits();
 
-    return (list || []).map(item => {
-      const category = categoriesList.find((c) => c.id === item.category_id) || null;
-      const unit = unitsList.find((u) => u.id === item.unit_id) || null;
+    return (list || []).map((item) => {
+      const category = (categoriesList || []).find((c) => c.id === item.category_id) || item.category || null;
+      const unit = (unitsList || []).find((u) => u.id === item.unit_id) || item.unit || null;
       return {
         ...item,
         item_type: item.item_type || item.type || 'product',
         default_sale_price: item.default_sale_price !== undefined ? item.default_sale_price : (item.sale_price || 0),
+        purchase_price: item.purchase_price !== undefined ? item.purchase_price : 0,
         tax_rate: item.tax_rate !== undefined ? item.tax_rate : 0,
         default_discount_percent: item.default_discount_percent !== undefined ? item.default_discount_percent : 0,
         track_inventory: item.track_inventory !== undefined ? item.track_inventory : (item.item_type === 'product'),
         category,
         unit,
+        prices: item.prices || [],
+        attributes: item.attributes || [],
       };
     }) as any[];
-  } catch {
-    return [];
+  } catch (err) {
+    console.error('Error in getDemoItemsFromStorage:', err);
+    return INITIAL_DEMO_ITEMS.map((item) => ({ ...item, business_id: businessId }));
   }
 }
 

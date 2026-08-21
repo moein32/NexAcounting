@@ -3,14 +3,86 @@ import { authService } from './authService';
 import { ItemCategory } from '../types/catalog';
 import { CategoryRepository, ItemRepository } from '../repositories';
 
+const INITIAL_DEMO_CATEGORIES: ItemCategory[] = [
+  {
+    id: 'cat_1',
+    business_id: 'demo_biz_1',
+    name: 'درب و پنجره',
+    description: 'انواع درب و پنجره‌های ساختمانی UPVC و آلومینیومی',
+    parent_id: null,
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'cat_1_1',
+    business_id: 'demo_biz_1',
+    name: 'پنجره UPVC',
+    description: 'پنجره‌های کشویی، لولایی و دوحالته UPVC',
+    parent_id: 'cat_1',
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'cat_1_2',
+    business_id: 'demo_biz_1',
+    name: 'پنجره آلومینیومی',
+    description: 'پنجره‌های اختصاصی و ترمال‌بریک آلومینیومی',
+    parent_id: 'cat_1',
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'cat_2',
+    business_id: 'demo_biz_1',
+    name: 'شیشه و جام',
+    description: 'انواع شیشه‌های ساختمانی، دوجداره، لمینت و سکوریت',
+    parent_id: null,
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'cat_3',
+    business_id: 'demo_biz_1',
+    name: 'یراق‌آلات و متعلقات',
+    description: 'دستگیره، لولا، اسپانیولت و مکانیزم‌های بازشو',
+    parent_id: null,
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'cat_4',
+    business_id: 'demo_biz_1',
+    name: 'خدمات فنی و نصب',
+    description: 'خدمات طراحی، اندازه‌گیری، نصب و تعمیرات',
+    parent_id: null,
+    is_active: true,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
 export const categoryService = {
   async getCategories(businessId: string): Promise<ItemCategory[]> {
     if (!isSupabaseConfigured()) {
-      const flatList = CategoryRepository.getAll(businessId);
+      let flatList = CategoryRepository.getAll(businessId);
+      if (flatList.length === 0) {
+        INITIAL_DEMO_CATEGORIES.forEach((c) => {
+          CategoryRepository.create({
+            ...c,
+            business_id: businessId,
+          });
+        });
+        flatList = CategoryRepository.getAll(businessId);
+      }
       
-      // Attach parent_name and build hierarchy
-      return flatList.map((cat) => {
-        const parent = flatList.find((p) => p.id === cat.parent_id);
+      // Attach parent_name and build hierarchy safely
+      return (flatList || []).map((cat) => {
+        const parent = (flatList || []).find((p) => p.id === cat.parent_id);
         return {
           ...cat,
           parent_name: parent ? parent.name : null,
