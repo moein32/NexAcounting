@@ -76,6 +76,18 @@ export interface Item {
   // Optional legacy fields for perfect backward compatibility
   type?: 'product' | 'service';
   sale_price?: number;
+  prices?: any[];
+  attributes?: any[];
+}
+
+export interface Unit {
+  id: string;
+  business_id: string;
+  name: string;
+  symbol?: string | null;
+  unit_type: 'count' | 'weight' | 'length' | 'area' | 'volume' | 'time' | 'service' | 'other';
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface Warehouse {
@@ -282,7 +294,10 @@ export const ItemRepository = {
   },
 
   // Categories & Units integration inside ItemRepository scope
-  getCategories(): any[] {
+  getCategories(businessId?: string): any[] {
+    if (businessId) {
+      return db.queryByBusiness<any>('categories', businessId);
+    }
     return db.queryAll<any>('categories');
   },
 
@@ -290,7 +305,10 @@ export const ItemRepository = {
     return db.insertRecord<any>('categories', cat);
   },
 
-  getUnits(): any[] {
+  getUnits(businessId?: string): any[] {
+    if (businessId) {
+      return db.queryByBusiness<any>('units', businessId);
+    }
     return db.queryAll<any>('units');
   },
 
@@ -319,6 +337,29 @@ export const CategoryRepository = {
 
   delete(id: string): boolean {
     return db.deleteRecord('categories', id);
+  },
+};
+
+// 3.6. UnitRepository
+export const UnitRepository = {
+  getAll(businessId: string): Unit[] {
+    return db.queryByBusiness<Unit>('units', businessId);
+  },
+
+  getById(id: string): Unit | null {
+    return db.queryById<Unit>('units', id);
+  },
+
+  create(unit: Omit<Unit, 'id'> & { id?: string }): Unit {
+    return db.insertRecord<Unit>('units', unit);
+  },
+
+  update(id: string, updates: Partial<Unit>): Unit {
+    return db.updateRecord<Unit>('units', id, updates);
+  },
+
+  delete(id: string): boolean {
+    return db.deleteRecord('units', id);
   },
 };
 

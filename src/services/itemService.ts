@@ -8,309 +8,67 @@ import {
   ItemPrice,
   ItemAttribute,
 } from '../types/catalog';
+import { ItemRepository, CategoryRepository, UnitRepository } from '../repositories';
 
-const DEMO_ITEMS_STORAGE_KEY = 'nex_demo_items_data';
-const DEMO_ITEM_PRICES_STORAGE_KEY = 'nex_demo_item_prices';
-const DEMO_ITEM_ATTRIBUTES_STORAGE_KEY = 'nex_demo_item_attributes';
+function mapToCanonicalItem(
+  rawItem: any,
+  categoriesList: any[],
+  unitsList: any[]
+): Item {
+  const category =
+    categoriesList.find((c) => c.id === rawItem.category_id) || rawItem.category || null;
+  const unit =
+    unitsList.find((u) => u.id === rawItem.unit_id) || rawItem.unit || null;
+  const itemType: ItemType = (rawItem.item_type || rawItem.type || 'product') as ItemType;
+  const defaultSalePrice =
+    rawItem.default_sale_price !== undefined
+      ? Number(rawItem.default_sale_price)
+      : Number(rawItem.sale_price || 0);
+  const purchasePrice =
+    rawItem.purchase_price !== undefined ? Number(rawItem.purchase_price) : 0;
+  const taxRate = rawItem.tax_rate !== undefined ? Number(rawItem.tax_rate) : 0;
+  const defaultDiscount =
+    rawItem.default_discount_percent !== undefined
+      ? Number(rawItem.default_discount_percent)
+      : 0;
+  const trackInventory =
+    itemType === 'service'
+      ? false
+      : rawItem.track_inventory !== undefined
+      ? Boolean(rawItem.track_inventory)
+      : true;
 
-const INITIAL_DEMO_ITEMS: Item[] = [
-  {
-    id: 'item_1',
-    business_id: 'demo_biz_1',
-    item_type: 'product',
-    name: 'پنجره دوجداره UPVC کشویی مدل وین‌تک',
-    code: 'PRD-1001',
-    sku: 'UPVC-WIN-1001',
-    barcode: '626001234001',
-    category_id: 'cat_1_1',
-    unit_id: 'unit_2', // مترمربع
-    description: 'پنجره دوجداره کشویی با پروفیل ۵ کاناله وین‌تک و شیشه دوجداره ۶+۴ با گاز آرگون',
-    short_description: 'پنجره UPVC کشویی وین‌تک دوجداره',
-    brand: 'وین‌تک (WinTech)',
-    model: 'Slide-60',
-    purchase_price: 1850000,
-    default_sale_price: 2650000,
-    tax_rate: 10,
-    default_discount_percent: 5,
-    min_stock: 10,
-    max_stock: 100,
-    track_inventory: true,
-    is_active: true,
-    image_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=400',
-    created_at: new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-    category: {
-      id: 'cat_1_1',
-      business_id: 'demo_biz_1',
-      name: 'پنجره UPVC',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    unit: {
-      id: 'unit_2',
-      business_id: 'demo_biz_1',
-      name: 'مترمربع',
-      symbol: 'm²',
-      unit_type: 'area',
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-    prices: [
-      { id: 'ip_1', item_id: 'item_1', price_list_id: 'plist_1', price: 2650000, min_quantity: 1, price_list_name: 'قیمت مصرف‌کننده' },
-      { id: 'ip_2', item_id: 'item_1', price_list_id: 'plist_2', price: 2400000, min_quantity: 10, price_list_name: 'قیمت عمده‌فروشی' },
-      { id: 'ip_3', item_id: 'item_1', price_list_id: 'plist_3', price: 2250000, min_quantity: 1, price_list_name: 'قیمت همکار / نماینده' },
-    ],
-    attributes: [
-      { id: 'ia_1', item_id: 'item_1', attribute_name: 'رنگ', attribute_value: 'سفید صدفی' },
-      { id: 'ia_2', item_id: 'item_1', attribute_name: 'ضخامت پروفیل', attribute_value: '60mm' },
-      { id: 'ia_3', item_id: 'item_1', attribute_name: 'نوع یراق‌آلات', attribute_value: 'روتوی آلمان (Roto)' },
-    ],
-  },
-  {
-    id: 'item_2',
-    business_id: 'demo_biz_1',
-    item_type: 'product',
-    name: 'پنجره آلومینیومی ترمال بریک لولایی شامپاینی',
-    code: 'PRD-1002',
-    sku: 'ALU-WIN-2002',
-    barcode: '626001234002',
-    category_id: 'cat_1_2',
-    unit_id: 'unit_2',
-    description: 'پنجره لولایی ترمال بریک آلومینیومی با عایق پلی‌آمید و رنگ آنادایز شامپاینی',
-    short_description: 'پنجره آلومینیومی ترمال بریک آنادایز',
-    brand: 'آکپا (Akpa)',
-    model: 'TH60',
-    purchase_price: 3400000,
-    default_sale_price: 4800000,
-    tax_rate: 10,
-    default_discount_percent: 0,
-    min_stock: 5,
-    max_stock: 50,
-    track_inventory: true,
-    is_active: true,
-    image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400',
-    created_at: new Date(Date.now() - 45 * 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-    category: {
-      id: 'cat_1_2',
-      business_id: 'demo_biz_1',
-      name: 'پنجره آلومینیومی',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    unit: {
-      id: 'unit_2',
-      business_id: 'demo_biz_1',
-      name: 'مترمربع',
-      symbol: 'm²',
-      unit_type: 'area',
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-    prices: [
-      { id: 'ip_4', item_id: 'item_2', price_list_id: 'plist_1', price: 4800000, min_quantity: 1, price_list_name: 'قیمت مصرف‌کننده' },
-      { id: 'ip_5', item_id: 'item_2', price_list_id: 'plist_2', price: 4400000, min_quantity: 10, price_list_name: 'قیمت عمده‌فروشی' },
-    ],
-  },
-  {
-    id: 'item_3',
-    business_id: 'demo_biz_1',
-    item_type: 'product',
-    name: 'شیشه دوجداره 6+4 صنعتی با اسپیسر آلومینیومی',
-    code: 'PRD-1003',
-    sku: 'GLS-DBL-3003',
-    barcode: '626001234003',
-    category_id: 'cat_2_1',
-    unit_id: 'unit_2',
-    description: 'شیشه دوجداره ۶ میل ساده و ۴ میل ساده با تزریق ۱۲ میل گاز آرگون و چسب بوتیل',
-    short_description: 'شیشه دوجداره صنعتی ۶ و ۴ میل',
-    brand: 'اردکان',
-    model: 'Clear Double Glass',
-    purchase_price: 620000,
-    default_sale_price: 950000,
-    tax_rate: 10,
-    default_discount_percent: 0,
-    min_stock: 50,
-    max_stock: 500,
-    track_inventory: true,
-    is_active: true,
-    image_url: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&q=80&w=400',
-    created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-    category: {
-      id: 'cat_2_1',
-      business_id: 'demo_biz_1',
-      name: 'شیشه دوجداره',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    unit: {
-      id: 'unit_2',
-      business_id: 'demo_biz_1',
-      name: 'مترمربع',
-      symbol: 'm²',
-      unit_type: 'area',
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 'item_4',
-    business_id: 'demo_biz_1',
-    item_type: 'service',
-    name: 'خدمات نصب تخصصی درب و پنجره در محل',
-    code: 'SRV-2001',
-    sku: 'SRV-INS-001',
-    barcode: null,
-    category_id: 'cat_3_1',
-    unit_id: 'unit_5', // خدمت
-    description: 'نصب، رگلاژ، آب‌بندی و هوابندی کامل درب و پنجره‌های ساختمانی توسط تکنسین مجرب',
-    short_description: 'اجرا و نصب درب و پنجره',
-    brand: 'نوین پرداز',
-    model: 'Inst-Service',
-    purchase_price: 0,
-    default_sale_price: 350000,
-    tax_rate: 0,
-    default_discount_percent: 0,
-    min_stock: 0,
-    max_stock: null,
-    track_inventory: false, // Services MUST have track_inventory = false
-    is_active: true,
-    created_at: new Date(Date.now() - 20 * 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-    category: {
-      id: 'cat_3_1',
-      business_id: 'demo_biz_1',
-      name: 'نصب و اجرا',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    unit: {
-      id: 'unit_5',
-      business_id: 'demo_biz_1',
-      name: 'خدمت / سرویس',
-      symbol: 'خدمت',
-      unit_type: 'service',
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-    prices: [
-      { id: 'ip_6', item_id: 'item_4', price_list_id: 'plist_1', price: 350000, min_quantity: 1, price_list_name: 'قیمت مصرف‌کننده' },
-      { id: 'ip_7', item_id: 'item_4', price_list_id: 'plist_2', price: 280000, min_quantity: 10, price_list_name: 'قیمت عمده‌فروشی' },
-    ],
-  },
-  {
-    id: 'item_5',
-    business_id: 'demo_biz_1',
-    item_type: 'service',
-    name: 'خدمات حمل و جرثقیل بالابر شیشه و قاب',
-    code: 'SRV-2002',
-    sku: 'SRV-TRN-002',
-    barcode: null,
-    category_id: 'cat_3_2',
-    unit_id: 'unit_5',
-    description: 'حمل تخصصی شیشه‌های ابعاد بزرگ و فریم‌های آلومینیومی با خاور کفی مجهز به مهاربند',
-    short_description: 'حمل و ارسال پروژه شهری',
-    brand: null,
-    model: null,
-    purchase_price: 0,
-    default_sale_price: 800000,
-    tax_rate: 0,
-    default_discount_percent: 0,
-    min_stock: 0,
-    max_stock: null,
-    track_inventory: false,
-    is_active: true,
-    created_at: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-    category: {
-      id: 'cat_3_2',
-      business_id: 'demo_biz_1',
-      name: 'حمل و نقل و جابجایی',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    unit: {
-      id: 'unit_5',
-      business_id: 'demo_biz_1',
-      name: 'خدمت / سرویس',
-      symbol: 'خدمت',
-      unit_type: 'service',
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-  },
-];
-
-import { ItemRepository, CategoryRepository } from '../repositories';
-
-function getDemoItemsFromStorage(businessId: string): Item[] {
-  try {
-    let list = ItemRepository.getAll(businessId) as any[];
-    if (!list || list.length === 0) {
-      INITIAL_DEMO_ITEMS.forEach((item) => {
-        ItemRepository.create({
-          ...item,
-          business_id: businessId,
-          type: item.item_type as 'product' | 'service',
-          sale_price: item.default_sale_price || 0,
-        } as any);
-      });
-      list = ItemRepository.getAll(businessId) as any[];
-    }
-
-    const categoriesList = CategoryRepository.getAll(businessId);
-    const unitsList = ItemRepository.getUnits();
-
-    return (list || []).map((item) => {
-      const category = (categoriesList || []).find((c) => c.id === item.category_id) || item.category || null;
-      const unit = (unitsList || []).find((u) => u.id === item.unit_id) || item.unit || null;
-      return {
-        ...item,
-        item_type: item.item_type || item.type || 'product',
-        default_sale_price: item.default_sale_price !== undefined ? item.default_sale_price : (item.sale_price || 0),
-        purchase_price: item.purchase_price !== undefined ? item.purchase_price : 0,
-        tax_rate: item.tax_rate !== undefined ? item.tax_rate : 0,
-        default_discount_percent: item.default_discount_percent !== undefined ? item.default_discount_percent : 0,
-        track_inventory: item.track_inventory !== undefined ? item.track_inventory : (item.item_type === 'product'),
-        category,
-        unit,
-        prices: item.prices || [],
-        attributes: item.attributes || [],
-      };
-    }) as any[];
-  } catch (err) {
-    console.error('Error in getDemoItemsFromStorage:', err);
-    return INITIAL_DEMO_ITEMS.map((item) => ({ ...item, business_id: businessId }));
-  }
-}
-
-function saveDemoItemsToStorage(items: Item[]) {
-  try {
-    items.forEach((updated) => {
-      const existing = ItemRepository.getById(updated.id);
-      if (existing) {
-        ItemRepository.update(updated.id, {
-          ...updated,
-          type: updated.item_type as 'product' | 'service',
-          sale_price: updated.default_sale_price || 0,
-        } as any);
-      } else {
-        ItemRepository.create({
-          ...updated,
-          type: updated.item_type as 'product' | 'service',
-          sale_price: updated.default_sale_price || 0,
-        } as any);
-      }
-    });
-  } catch (e) {
-    console.error('Error saving items to SQLite:', e);
-  }
+  return {
+    id: rawItem.id,
+    business_id: rawItem.business_id,
+    item_type: itemType,
+    name: rawItem.name || '',
+    code: rawItem.code || null,
+    sku: rawItem.sku || null,
+    barcode: rawItem.barcode || null,
+    category_id: rawItem.category_id || null,
+    unit_id: rawItem.unit_id || null,
+    description: rawItem.description || null,
+    short_description: rawItem.short_description || null,
+    brand: rawItem.brand || null,
+    model: rawItem.model || null,
+    purchase_price: purchasePrice,
+    default_sale_price: defaultSalePrice,
+    tax_rate: taxRate,
+    default_discount_percent: defaultDiscount,
+    min_stock: Number(rawItem.min_stock) || 0,
+    max_stock: rawItem.max_stock != null ? Number(rawItem.max_stock) : null,
+    track_inventory: trackInventory,
+    is_active: rawItem.is_active !== undefined ? Boolean(rawItem.is_active) : true,
+    image_url: rawItem.image_url || null,
+    created_by: rawItem.created_by || null,
+    created_at: rawItem.created_at || new Date().toISOString(),
+    updated_at: rawItem.updated_at || new Date().toISOString(),
+    category,
+    unit,
+    prices: rawItem.prices || [],
+    attributes: rawItem.attributes || [],
+  };
 }
 
 export const itemService = {
@@ -336,7 +94,7 @@ export const itemService = {
     }
 
     if (!isSupabaseConfigured()) {
-      const list = getDemoItemsFromStorage(businessId);
+      const list = ItemRepository.getAll(businessId) || [];
       for (const item of list) {
         if (excludeItemId && item.id === excludeItemId) continue;
 
@@ -358,7 +116,10 @@ export const itemService = {
 
     // Supabase duplicate check
     try {
-      let query = supabase.from('items').select('id, name, sku, barcode, code').eq('business_id', businessId);
+      let query = supabase
+        .from('items')
+        .select('id, name, sku, barcode, code')
+        .eq('business_id', businessId);
       if (excludeItemId) {
         query = query.neq('id', excludeItemId);
       }
@@ -401,7 +162,11 @@ export const itemService = {
     filters?: ItemFilters
   ): Promise<{ data: Item[]; count: number }> {
     if (!isSupabaseConfigured()) {
-      let list = getDemoItemsFromStorage(businessId);
+      const rawList = ItemRepository.getAll(businessId) || [];
+      const categoriesList = CategoryRepository.getAll(businessId) || [];
+      const unitsList = UnitRepository.getAll(businessId) || [];
+
+      let list = rawList.map((i) => mapToCanonicalItem(i, categoriesList, unitsList));
 
       // Filters
       if (filters?.item_type && filters.item_type !== 'all') {
@@ -422,12 +187,12 @@ export const itemService = {
         list = list.filter(
           (i) =>
             i.name.toLowerCase().includes(q) ||
-            i.code?.toLowerCase().includes(q) ||
-            i.sku?.toLowerCase().includes(q) ||
-            i.barcode?.includes(q) ||
-            i.brand?.toLowerCase().includes(q) ||
-            i.model?.toLowerCase().includes(q) ||
-            i.description?.toLowerCase().includes(q)
+            (i.code && i.code.toLowerCase().includes(q)) ||
+            (i.sku && i.sku.toLowerCase().includes(q)) ||
+            (i.barcode && i.barcode.includes(q)) ||
+            (i.brand && i.brand.toLowerCase().includes(q)) ||
+            (i.model && i.model.toLowerCase().includes(q)) ||
+            (i.description && i.description.toLowerCase().includes(q))
         );
       }
 
@@ -520,9 +285,12 @@ export const itemService = {
 
   async getItemById(businessId: string, itemId: string): Promise<Item | null> {
     if (!isSupabaseConfigured()) {
-      const list = getDemoItemsFromStorage(businessId);
-      const item = list.find((i) => i.id === itemId);
-      return item || null;
+      const raw = ItemRepository.getById(itemId);
+      if (!raw || raw.business_id !== businessId) return null;
+
+      const categoriesList = CategoryRepository.getAll(businessId) || [];
+      const unitsList = UnitRepository.getAll(businessId) || [];
+      return mapToCanonicalItem(raw, categoriesList, unitsList);
     }
 
     try {
@@ -576,14 +344,14 @@ export const itemService = {
     const trackInventory = input.item_type === 'service' ? false : !!input.track_inventory;
 
     if (!isSupabaseConfigured()) {
-      const newItemId = `item_${Date.now()}`;
+      const newItemId = input.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const now = new Date().toISOString();
 
       const pricesList = (input.prices || []).map((p, idx) => ({
         id: `ip_${Date.now()}_${idx}`,
         item_id: newItemId,
         price_list_id: p.price_list_id,
-        price: p.price,
+        price: Number(p.price) || 0,
         min_quantity: p.min_quantity || 1,
       }));
 
@@ -593,6 +361,8 @@ export const itemService = {
         attribute_name: a.attribute_name,
         attribute_value: a.attribute_value,
       }));
+
+      const defaultSalePrice = Number(input.default_sale_price) || 0;
 
       const newItem: Item = {
         id: newItemId,
@@ -609,13 +379,13 @@ export const itemService = {
         brand: input.brand || null,
         model: input.model || null,
         purchase_price: Number(input.purchase_price) || 0,
-        default_sale_price: Number(input.default_sale_price) || 0,
+        default_sale_price: defaultSalePrice,
         tax_rate: Number(input.tax_rate) || 0,
         default_discount_percent: Number(input.default_discount_percent) || 0,
         min_stock: Number(input.min_stock) || 0,
         max_stock: input.max_stock ? Number(input.max_stock) : null,
         track_inventory: trackInventory,
-        is_active: true,
+        is_active: input.is_active !== undefined ? input.is_active : true,
         image_url: input.image_url || null,
         created_by: currentUserId || null,
         created_at: now,
@@ -624,7 +394,13 @@ export const itemService = {
         attributes: attrsList,
       };
 
-      saveDemoItemsToStorage([newItem]);
+      // Support legacy fields at boundary
+      ItemRepository.create({
+        ...newItem,
+        type: newItem.item_type,
+        sale_price: defaultSalePrice,
+      } as any);
+
       return newItem;
     }
 
@@ -716,33 +492,41 @@ export const itemService = {
     if (!existing) throw new Error('کالا یا خدمت پیدا نشد');
 
     const itemType = input.item_type || existing.item_type;
-    const trackInventory = itemType === 'service' ? false : (input.track_inventory !== undefined ? input.track_inventory : existing.track_inventory);
+    const trackInventory =
+      itemType === 'service'
+        ? false
+        : input.track_inventory !== undefined
+        ? input.track_inventory
+        : existing.track_inventory;
 
     if (!isSupabaseConfigured()) {
-      const list = getDemoItemsFromStorage(businessId);
-      const idx = list.findIndex((i) => i.id === itemId);
-      if (idx < 0) throw new Error('کالا یافت نشد');
-
       const now = new Date().toISOString();
-      const updated: Item = {
-        ...list[idx],
+      const updates: Partial<Item> & { type?: string; sale_price?: number } = {
         ...input,
+        item_type: itemType,
         track_inventory: trackInventory,
         updated_at: now,
       };
 
+      if (input.item_type) {
+        updates.type = input.item_type;
+      }
+      if (input.default_sale_price !== undefined) {
+        updates.sale_price = Number(input.default_sale_price);
+      }
+
       if (input.prices) {
-        updated.prices = (input.prices || []).map((p, i) => ({
+        updates.prices = (input.prices || []).map((p, i) => ({
           id: `ip_${Date.now()}_${i}`,
           item_id: itemId,
           price_list_id: p.price_list_id,
-          price: p.price,
+          price: Number(p.price) || 0,
           min_quantity: p.min_quantity || 1,
         }));
       }
 
       if (input.attributes) {
-        updated.attributes = (input.attributes || []).map((a, i) => ({
+        updates.attributes = (input.attributes || []).map((a, i) => ({
           id: `ia_${Date.now()}_${i}`,
           item_id: itemId,
           attribute_name: a.attribute_name,
@@ -750,8 +534,9 @@ export const itemService = {
         }));
       }
 
-      saveDemoItemsToStorage([updated]);
-      return updated;
+      ItemRepository.update(itemId, updates as any);
+      const updated = await this.getItemById(businessId, itemId);
+      return updated!;
     }
 
     try {
@@ -769,12 +554,22 @@ export const itemService = {
           short_description: input.short_description || null,
           brand: input.brand || null,
           model: input.model || null,
-          purchase_price: input.purchase_price !== undefined ? Number(input.purchase_price) : undefined,
-          default_sale_price: input.default_sale_price !== undefined ? Number(input.default_sale_price) : undefined,
+          purchase_price:
+            input.purchase_price !== undefined ? Number(input.purchase_price) : undefined,
+          default_sale_price:
+            input.default_sale_price !== undefined ? Number(input.default_sale_price) : undefined,
           tax_rate: input.tax_rate !== undefined ? Number(input.tax_rate) : undefined,
-          default_discount_percent: input.default_discount_percent !== undefined ? Number(input.default_discount_percent) : undefined,
+          default_discount_percent:
+            input.default_discount_percent !== undefined
+              ? Number(input.default_discount_percent)
+              : undefined,
           min_stock: input.min_stock !== undefined ? Number(input.min_stock) : undefined,
-          max_stock: input.max_stock !== undefined ? (input.max_stock ? Number(input.max_stock) : null) : undefined,
+          max_stock:
+            input.max_stock !== undefined
+              ? input.max_stock
+                ? Number(input.max_stock)
+                : null
+              : undefined,
           track_inventory: trackInventory,
           is_active: input.is_active !== undefined ? input.is_active : undefined,
           image_url: input.image_url || null,
@@ -837,12 +632,7 @@ export const itemService = {
     currentUserId?: string
   ): Promise<boolean> {
     if (!isSupabaseConfigured()) {
-      const list = getDemoItemsFromStorage(businessId);
-      const item = list.find((i) => i.id === itemId);
-      if (item) {
-        item.is_active = false;
-        saveDemoItemsToStorage([item]);
-      }
+      ItemRepository.update(itemId, { is_active: false, updated_at: new Date().toISOString() });
       return true;
     }
 
@@ -879,10 +669,7 @@ export const itemService = {
     currentUserId?: string
   ): Promise<boolean> {
     if (!isSupabaseConfigured()) {
-      const raw = localStorage.getItem(DEMO_ITEMS_STORAGE_KEY);
-      let list: Item[] = raw ? JSON.parse(raw) : INITIAL_DEMO_ITEMS;
-      list = list.filter((i) => i.id !== itemId);
-      localStorage.setItem(DEMO_ITEMS_STORAGE_KEY, JSON.stringify(list));
+      ItemRepository.delete(itemId);
       return true;
     }
 
@@ -919,7 +706,8 @@ export const itemService = {
 
   async getItemPrices(itemId: string): Promise<ItemPrice[]> {
     if (!isSupabaseConfigured()) {
-      return [];
+      const item: any = ItemRepository.getById(itemId);
+      return item?.prices || [];
     }
     try {
       const { data, error } = await supabase
@@ -941,7 +729,10 @@ export const itemService = {
     itemId: string,
     prices: { price_list_id: string; price: number; min_quantity: number }[]
   ): Promise<boolean> {
-    if (!isSupabaseConfigured()) return true;
+    if (!isSupabaseConfigured()) {
+      ItemRepository.update(itemId, { prices: prices as any } as any);
+      return true;
+    }
 
     try {
       await supabase.from('item_prices').delete().eq('item_id', itemId);

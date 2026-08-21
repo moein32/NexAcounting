@@ -1,125 +1,12 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { authService } from './authService';
 import { Unit, UnitType } from '../types/catalog';
-
-const DEMO_UNITS_STORAGE_KEY = 'nex_demo_units_data';
-
-const INITIAL_DEMO_UNITS: Unit[] = [
-  {
-    id: 'unit_1',
-    business_id: 'demo_biz_1',
-    name: 'عدد',
-    symbol: 'عدد',
-    unit_type: 'count',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_2',
-    business_id: 'demo_biz_1',
-    name: 'مترمربع',
-    symbol: 'm²',
-    unit_type: 'area',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_3',
-    business_id: 'demo_biz_1',
-    name: 'متر',
-    symbol: 'm',
-    unit_type: 'length',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_4',
-    business_id: 'demo_biz_1',
-    name: 'کیلوگرم',
-    symbol: 'kg',
-    unit_type: 'weight',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_5',
-    business_id: 'demo_biz_1',
-    name: 'خدمت / سرویس',
-    symbol: 'خدمت',
-    unit_type: 'service',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_6',
-    business_id: 'demo_biz_1',
-    name: 'ساعت',
-    symbol: 'h',
-    unit_type: 'time',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_7',
-    business_id: 'demo_biz_1',
-    name: 'دستگاه',
-    symbol: 'دستگاه',
-    unit_type: 'count',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'unit_8',
-    business_id: 'demo_biz_1',
-    name: 'شاخه',
-    symbol: 'شاخه',
-    unit_type: 'count',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
-  },
-];
-
-function getDemoUnitsFromStorage(businessId: string): Unit[] {
-  try {
-    const raw = localStorage.getItem(DEMO_UNITS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(DEMO_UNITS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_UNITS));
-      return INITIAL_DEMO_UNITS.filter((u) => u.business_id === businessId);
-    }
-    const parsed: Unit[] = JSON.parse(raw);
-    const filtered = parsed.filter((u) => u.business_id === businessId);
-    if (filtered.length === 0 && businessId === 'demo_biz_1') {
-      return INITIAL_DEMO_UNITS;
-    }
-    return filtered;
-  } catch {
-    return INITIAL_DEMO_UNITS.filter((u) => u.business_id === businessId);
-  }
-}
-
-function saveDemoUnitsToStorage(units: Unit[]) {
-  try {
-    const raw = localStorage.getItem(DEMO_UNITS_STORAGE_KEY);
-    let all: Unit[] = raw ? JSON.parse(raw) : INITIAL_DEMO_UNITS;
-
-    units.forEach((updated) => {
-      const idx = all.findIndex((u) => u.id === updated.id);
-      if (idx >= 0) {
-        all[idx] = updated;
-      } else {
-        all.unshift(updated);
-      }
-    });
-    localStorage.setItem(DEMO_UNITS_STORAGE_KEY, JSON.stringify(all));
-  } catch (e) {
-    console.error('Error saving demo units:', e);
-  }
-}
+import { UnitRepository, ItemRepository } from '../repositories';
 
 export const unitService = {
   async getUnits(businessId: string): Promise<Unit[]> {
     if (!isSupabaseConfigured()) {
-      return getDemoUnitsFromStorage(businessId);
+      return UnitRepository.getAll(businessId) || [];
     }
 
     try {
@@ -133,7 +20,7 @@ export const unitService = {
       return data || [];
     } catch (err: any) {
       console.error('Error fetching units:', err);
-      return [];
+      throw err;
     }
   },
 
@@ -155,7 +42,7 @@ export const unitService = {
         is_active: true,
         created_at: new Date().toISOString(),
       };
-      saveDemoUnitsToStorage([newUnit]);
+      UnitRepository.create(newUnit);
       return newUnit;
     }
 
@@ -201,17 +88,17 @@ export const unitService = {
     currentUserId?: string
   ): Promise<Unit> {
     if (!isSupabaseConfigured()) {
-      const list = getDemoUnitsFromStorage(businessId);
-      const unit = list.find((u) => u.id === unitId);
-      if (!unit) throw new Error('واحد پیدا نشد');
+      const existing = UnitRepository.getById(unitId);
+      if (!existing) throw new Error('واحد پیدا نشد');
 
-      if (data.name !== undefined) unit.name = data.name.trim();
-      if (data.symbol !== undefined) unit.symbol = data.symbol?.trim() || null;
-      if (data.unit_type !== undefined) unit.unit_type = data.unit_type;
-      if (data.is_active !== undefined) unit.is_active = data.is_active;
+      const updates: Partial<Unit> = {};
+      if (data.name !== undefined) updates.name = data.name.trim();
+      if (data.symbol !== undefined) updates.symbol = data.symbol?.trim() || null;
+      if (data.unit_type !== undefined) updates.unit_type = data.unit_type;
+      if (data.is_active !== undefined) updates.is_active = data.is_active;
 
-      saveDemoUnitsToStorage([unit]);
-      return unit;
+      const updated = UnitRepository.update(unitId, updates);
+      return updated;
     }
 
     try {
@@ -247,6 +134,36 @@ export const unitService = {
     } catch (err: any) {
       console.error('Error updating unit:', err);
       throw new Error(err.message || 'خطا در ویرایش واحد');
+    }
+  },
+
+  async deleteUnit(
+    businessId: string,
+    unitId: string,
+    currentUserId?: string
+  ): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      const items = ItemRepository.getAll(businessId) || [];
+      const inUse = items.some((i) => i.unit_id === unitId);
+      if (inUse) {
+        throw new Error('این واحد در کالاها یا خدمات استفاده شده است و قابل حذف نیست.');
+      }
+      UnitRepository.delete(unitId);
+      return true;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('units')
+        .delete()
+        .eq('id', unitId)
+        .eq('business_id', businessId);
+
+      if (error) throw error;
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting unit:', err);
+      throw new Error(err.message || 'خطا در حذف واحد');
     }
   },
 

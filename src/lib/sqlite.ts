@@ -307,7 +307,7 @@ class SqliteDatabaseEngine {
       if (record.party_id && !this.state.parties.some((p) => p.id === record.party_id)) {
         this.state.parties.push({
           id: record.party_id,
-          business_id: record.business_id || 'demo_biz_1',
+          business_id: record.business_id || 'biz_main',
           name: record.party_display_name || 'طرف حساب ' + record.party_id,
           roles: ['customer'],
           created_at: new Date().toISOString(),
@@ -320,7 +320,7 @@ class SqliteDatabaseEngine {
       if (record.document_id && !this.state.documents.some((d) => d.id === record.document_id)) {
         this.state.documents.push({
           id: record.document_id,
-          business_id: record.business_id || 'demo_biz_1',
+          business_id: record.business_id || 'biz_main',
           document_type: 'sales_invoice',
           document_number: 'DOC-' + record.document_id,
           party_id: 'party_1',
@@ -341,7 +341,7 @@ class SqliteDatabaseEngine {
       if (record.item_id && !this.state.items.some((i) => i.id === record.item_id)) {
         this.state.items.push({
           id: record.item_id,
-          business_id: record.business_id || 'demo_biz_1',
+          business_id: record.business_id || 'biz_main',
           name: record.item_name || record.productName || 'کالای ' + record.item_id,
           code: 'ITM-' + record.item_id,
           type: 'product',
