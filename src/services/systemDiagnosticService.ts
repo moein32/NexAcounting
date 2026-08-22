@@ -40,16 +40,40 @@ export interface DiagnosticReport {
 }
 
 /**
+ * /**
  * Independently simulates FIFO costing for all transactions of products in the given business
  * and compares it with the recorded COGS entries.
  */
-function calculateFIFOExpectedCOGS(businessId: string): { expected: number; actual: number; mismatch: boolean; tested: number; details: string } {
-  const cogsEntries = db.queryAll<any>('cogs_entries').filter(c => c.business_id === businessId);
-  const items = db.queryAll<any>('items').filter(i => i.business_id === businessId);
-  
-  if (cogsEntries.length === 0) {
-    return { expected: 0, actual: 0, mismatch: false, tested: 0, details: 'هیچ ثبت بهای تمام شده‌ای یافت نشد.' };
+function calculateFIFOExpectedCOGS(businessId: string): { 
+  status: 'PASS' | 'WARN' | 'FAIL'; 
+  expected: number; 
+  actual: number; 
+  tested: number; 
+  details: string; 
+} {
+  const items = db.queryAll<any>('items').filter(i => i.business_id === businessId && (i.type === 'product' || i.item_type === 'product'));
+  const warehouses = db.queryAll<any>('warehouses').filter(w => w.business_id === businessId);
+  const purchaseInvoices = db.queryAll<any>('documents').filter(
+    d => d.business_id === businessId && d.document_type === 'purchase_invoice' && d.status === 'confirmed'
+  );
+  const salesInvoices = db.queryAll<any>('documents').filter(
+    d => d.business_id === businessId && d.document_type === 'sales_invoice' && d.status === 'confirmed'
+  );
+
+  if (items.length === 0) {
+    return { status: 'WARN', expected: 0, actual: 0, tested: 0, details: 'هیچ کالایی جهت اجرای آزمون بهای تمام‌شده FIFO در محیط تست جاری یافت نشد.' };
   }
+  if (warehouses.length === 0) {
+    return { status: 'WARN', expected: 0, actual: 0, tested: 0, details: 'هیچ انباری جهت اجرای آزمون بهای تمام‌شده FIFO در محیط تست جاری یافت نشد.' };
+  }
+  if (purchaseInvoices.length === 0) {
+    return { status: 'WARN', expected: 0, actual: 0, tested: 0, details: 'هیچ فاکتور خریدی جهت ایجاد لایه‌های FIFO در محیط تست جاری یافت نشد.' };
+  }
+  if (salesInvoices.length === 0) {
+    return { status: 'WARN', expected: 0, actual: 0, tested: 0, details: 'هیچ فاکتور فروشی برای آزمون بهای تمام‌شده FIFO در محیط تست جاری یافت نشد.' };
+  }
+
+  const cogsEntries = db.queryAll<any>('cogs_entries').filter(c => c.business_id === businessId);
 
   let totalExpectedCOGS = 0;
   let totalActualCOGS = 0;
@@ -58,8 +82,6 @@ function calculateFIFOExpectedCOGS(businessId: string): { expected: number; actu
 
   // Simulate FIFO for each product item
   for (const item of items) {
-    if (item.type !== 'product' && item.item_type !== 'product' && item.track_inventory === false) continue;
-
     // Get all documents that affect inventory costing, sorted chronologically
     const docs = db.queryAll<any>('documents')
       .filter(d => d.business_id === businessId && d.status === 'confirmed')
@@ -105,19 +127,38 @@ function calculateFIFOExpectedCOGS(businessId: string): { expected: number; actu
             }
             
             if (remainingToConsume > 0) {
-              const fallbackPrice = item.purchase_price || 100000;
-              simulatedCOGS += remainingToConsume * fallbackPrice;
+              return { 
+                status: 'FAIL', 
+                expected: 0, 
+                actual: 0, 
+                tested: cogsEntries.length, 
+                details: 'Insufficient FIFO layers for sale' 
+              };
             }
 
             const actualCogs = cogsEntries.find(c => c.document_id === doc.id && c.item_id === item.id);
-            const actualCost = actualCogs ? Number(actualCogs.total_cost) : 0;
+            if (!actualCogs) {
+              if (simulatedCOGS > 0) {
+                return { 
+                  status: 'FAIL', 
+                  expected: simulatedCOGS, 
+                  actual: 0, 
+                  tested: cogsEntries.length, 
+                  details: 'Missing COGS entry' 
+                };
+              } else {
+                totalExpectedCOGS += simulatedCOGS;
+                totalActualCOGS += 0;
+              }
+            } else {
+              const actualCost = Number(actualCogs.total_cost);
+              totalExpectedCOGS += simulatedCOGS;
+              totalActualCOGS += actualCost;
 
-            totalExpectedCOGS += simulatedCOGS;
-            totalActualCOGS += actualCost;
-
-            if (Math.abs(simulatedCOGS - actualCost) > 0.01) {
-              hasMismatch = true;
-              details += `سند فروش ${doc.doc_number || doc.id}: بهای تمام شده محاسباتی ${simulatedCOGS} و ثبت شده ${actualCost} است. `;
+              if (Math.abs(simulatedCOGS - actualCost) > 0.01) {
+                hasMismatch = true;
+                details += `سند فروش ${doc.doc_number || doc.id}: بهای تمام شده محاسباتی ${simulatedCOGS} و ثبت شده ${actualCost} است. `;
+              }
             }
           }
         }
@@ -125,7 +166,17 @@ function calculateFIFOExpectedCOGS(businessId: string): { expected: number; actu
         for (const di of docItems) {
           const qty = Number(di.quantity) || 0;
           if (qty > 0) {
-            const cost = item.purchase_price || 100000;
+            const actualCogs = cogsEntries.find(c => c.document_id === doc.id && c.item_id === item.id);
+            const cost = actualCogs ? Math.abs(Number(actualCogs.total_cost) / Number(actualCogs.quantity)) : (item.purchase_price || 0);
+            if (cost <= 0) {
+              return { 
+                status: 'FAIL', 
+                expected: 0, 
+                actual: 0, 
+                tested: cogsEntries.length, 
+                details: 'Missing COGS cost info for sales return' 
+              };
+            }
             if (!layersMap.has(warehouseId)) layersMap.set(warehouseId, []);
             layersMap.get(warehouseId)!.unshift({ qty, cost });
           }
@@ -134,12 +185,22 @@ function calculateFIFOExpectedCOGS(businessId: string): { expected: number; actu
     }
   }
 
+  if (hasMismatch) {
+    return {
+      status: 'FAIL',
+      expected: totalExpectedCOGS,
+      actual: totalActualCOGS,
+      tested: cogsEntries.length,
+      details
+    };
+  }
+
   return {
+    status: 'PASS',
     expected: totalExpectedCOGS,
     actual: totalActualCOGS,
-    mismatch: hasMismatch,
     tested: cogsEntries.length,
-    details
+    details: `تطبیق موفق. بهای تمام‌شده محاسباتی به روش FIFO (${totalExpectedCOGS.toLocaleString()} تومان) کاملاً با مبالغ ثبت شده در جدول COGS همخوانی دارد.`
   };
 }
 
@@ -150,10 +211,52 @@ export const systemDiagnosticService = {
   async runAdvancedIntegrityTests(businessId: string): Promise<TestResultItem[]> {
     const results: TestResultItem[] = [];
 
+    // Identify the target business ID (the current test environment business)
+    let targetBizId = businessId;
+    if (!targetBizId.startsWith('TEST_BIZ_')) {
+      const testBusinesses = db.queryAll<any>('businesses')
+        .filter((b: any) => String(b.id).startsWith('TEST_BIZ_'))
+        .sort((a: any, b: any) => b.id.localeCompare(a.id)); // latest first
+      if (testBusinesses.length > 0) {
+        targetBizId = testBusinesses[0].id;
+      } else {
+        targetBizId = '';
+      }
+    }
+
+    if (!targetBizId) {
+      // If there is no active test environment business, warn all tests to guide the user
+      const warnMsg = 'محیط تست فعال یافت نشد. این آزمون‌ها فقط روی آخرین محیط تست (TEST_BIZ) اجرا می‌شوند.';
+      const testIds: Array<{ id: string; title: string }> = [
+        { id: 'assert_accounting_balance', title: 'تراز حسابداری (Debits === Credits)' },
+        { id: 'assert_inventory_reconciliation', title: 'تطبیق موجودی کالا (کاردکس و موجودی انبار)' },
+        { id: 'assert_fifo_cogs', title: 'تطبیق بهای تمام‌شده (FIFO)' },
+        { id: 'assert_transfer', title: 'تطبیق انتقال بین انبارها' },
+        { id: 'assert_doc_accounting', title: 'تطبیق اسناد و حسابداری' },
+        { id: 'assert_treasury', title: 'تطبیق خزانه و عملیات نقدینگی' },
+        { id: 'assert_negative_test', title: 'تست تشخیص فساد داده (Negative Test)' }
+      ];
+      for (const t of testIds) {
+        results.push({
+          id: t.id,
+          category: 'Integrity',
+          title: t.title,
+          status: 'WARN',
+          message: warnMsg,
+          durationMs: 0,
+          recordsTested: 0,
+        });
+      }
+      return results;
+    }
+
+    const bizInfo = db.queryById<any>('businesses', targetBizId);
+    const sessionSuffix = bizInfo?.demo_session_id ? ` (نشست تست فعال: ${bizInfo.demo_session_id})` : '';
+
     // 1. ACCOUNTING BALANCE
     try {
       const start = performance.now();
-      const entries = db.queryAll<any>('journal_entries').filter((j) => j.business_id === businessId);
+      const entries = db.queryAll<any>('journal_entries').filter((j) => j.business_id === targetBizId);
       const lines = db.queryAll<any>('journal_lines');
       
       if (entries.length === 0) {
@@ -162,7 +265,7 @@ export const systemDiagnosticService = {
           category: 'Integrity',
           title: 'تراز حسابداری (Debits === Credits)',
           status: 'WARN',
-          message: 'هیچ سند حسابداری برای بررسی یافت نشد.',
+          message: `هیچ سند حسابداری برای بررسی در محیط تست جاری یافت نشد${sessionSuffix}.`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
@@ -186,8 +289,8 @@ export const systemDiagnosticService = {
           title: 'تراز حسابداری (Debits === Credits)',
           status: failures === 0 ? 'PASS' : 'FAIL',
           message: failures === 0 
-            ? 'تطبیق انجام شد. کلیه اسناد حسابداری بررسی شده کاملاً تراز هستند.' 
-            : `خطا در تراز حسابداری: تعداد ${failures} سند نامتوازن یافت شد. جزئیات: ${details}`,
+            ? `تطبیق انجام شد. کلیه اسناد حسابداری بررسی شده کاملاً تراز هستند${sessionSuffix}.` 
+            : `خطا در تراز حسابداری: تعداد ${failures} سند نامتوازن یافت شد. جزئیات: ${details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: entries.length,
         });
@@ -199,18 +302,18 @@ export const systemDiagnosticService = {
     // 2. INVENTORY RECONCILIATION
     try {
       const start = performance.now();
-      const items = db.queryAll<any>('items').filter((i) => i.business_id === businessId);
-      const warehouses = db.queryAll<any>('warehouses').filter((w) => w.business_id === businessId);
-      const txs = db.queryAll<any>('inventory_transactions');
-      const balances = db.queryAll<any>('inventory_balances');
+      const items = db.queryAll<any>('items').filter((i) => i.business_id === targetBizId);
+      const warehouses = db.queryAll<any>('warehouses').filter((w) => w.business_id === targetBizId);
+      const txs = db.queryAll<any>('inventory_transactions').filter((tx) => tx.business_id === targetBizId);
+      const balances = db.queryAll<any>('inventory_balances').filter((b) => b.business_id === targetBizId);
 
-      if (items.length === 0) {
+      if (items.length === 0 || warehouses.length === 0) {
         results.push({
           id: 'assert_inventory_reconciliation',
           category: 'Integrity',
           title: 'تطبیق موجودی کالا (کاردکس و موجودی انبار)',
           status: 'WARN',
-          message: 'هیچ کالایی برای بررسی تطبیق موجودی یافت نشد.',
+          message: `کالا یا انبار معتبری برای بررسی تطبیق موجودی در محیط تست جاری یافت نشد${sessionSuffix}.`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
@@ -220,7 +323,7 @@ export const systemDiagnosticService = {
         let details = '';
 
         for (const item of items) {
-          if (item.type !== 'product') continue;
+          if (item.type !== 'product' && item.item_type !== 'product') continue;
 
           for (const wh of warehouses) {
             const itemWhTxs = txs.filter((t) => t.item_id === item.id && t.warehouse_id === wh.id);
@@ -258,8 +361,8 @@ export const systemDiagnosticService = {
           title: 'تطبیق موجودی کالا',
           status: inventoryFailures === 0 ? 'PASS' : 'FAIL',
           message: inventoryFailures === 0 
-            ? 'تطبیق انجام شد. موجودی محاسبه شده از روی تراکنش‌ها دقیقاً با جدول تراز موجودی همخوانی دارد.' 
-            : `مغایرت در تطبیق موجودی: تعداد ${inventoryFailures} مغایرت انبارداری کشف شد. جزئیات: ${details}`,
+            ? `تطبیق انجام شد. موجودی محاسبه شده از روی تراکنش‌ها دقیقاً با جدول تراز موجودی همخوانی دارد${sessionSuffix}.` 
+            : `مغایرت در تطبیق موجودی: تعداد ${inventoryFailures} مغایرت انبارداری کشف شد. جزئیات: ${details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: recordsTestedCount,
         });
@@ -271,25 +374,25 @@ export const systemDiagnosticService = {
     // 3. FIFO / COGS Reconciliation
     try {
       const start = performance.now();
-      const fifoCheck = calculateFIFOExpectedCOGS(businessId);
+      const fifoCheck = calculateFIFOExpectedCOGS(targetBizId);
       
-      if (fifoCheck.tested === 0) {
+      if (fifoCheck.status === 'WARN') {
         results.push({
           id: 'assert_fifo_cogs',
           category: 'Integrity',
           title: 'تطبیق بهای تمام‌شده (FIFO)',
           status: 'WARN',
-          message: 'داده‌ای برای ارزیابی بهای تمام‌شده و لایه‌های FIFO در این کسب‌وکار یافت نشد.',
+          message: `${fifoCheck.details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
-      } else if (fifoCheck.mismatch) {
+      } else if (fifoCheck.status === 'FAIL') {
         results.push({
           id: 'assert_fifo_cogs',
           category: 'Integrity',
           title: 'تطبیق بهای تمام‌شده (FIFO)',
           status: 'FAIL',
-          message: `مغایرت در بهای تمام‌شده کالا: ${fifoCheck.details}`,
+          message: `مغایرت در بهای تمام‌شده کالا: ${fifoCheck.details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: fifoCheck.tested,
         });
@@ -299,7 +402,7 @@ export const systemDiagnosticService = {
           category: 'Integrity',
           title: 'تطبیق بهای تمام‌شده (FIFO)',
           status: 'PASS',
-          message: `تطبیق موفق. بهای تمام‌شده محاسباتی به روش FIFO (${fifoCheck.expected.toLocaleString()} تومان) کاملاً با مبالغ ثبت شده در جدول COGS همخوانی دارد.`,
+          message: `${fifoCheck.details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: fifoCheck.tested,
         });
@@ -312,7 +415,7 @@ export const systemDiagnosticService = {
     try {
       const start = performance.now();
       const transfers = db.queryAll<any>('inventory_documents').filter(
-        (d) => d.business_id === businessId && d.document_type === 'transfer' && d.status === 'confirmed'
+        (d) => d.business_id === targetBizId && d.document_type === 'transfer' && d.status === 'confirmed'
       );
 
       if (transfers.length === 0) {
@@ -321,7 +424,7 @@ export const systemDiagnosticService = {
           category: 'Integrity',
           title: 'تطبیق انتقال بین انبارها',
           status: 'WARN',
-          message: 'هیچ سند انتقال بین انباری برای بررسی یافت نشد.',
+          message: `هیچ سند انتقال بین انباری در محیط تست جاری یافت نشد${sessionSuffix}.`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
@@ -382,8 +485,8 @@ export const systemDiagnosticService = {
           title: 'تطبیق انتقال بین انبارها',
           status: transferFailures === 0 ? 'PASS' : 'FAIL',
           message: transferFailures === 0 
-            ? 'تطبیق انتقال‌ها با موفقیت انجام شد. کلیه تراکنش‌های کاردکس مبدا و مقصد قرینه و همگام هستند.' 
-            : `خطا در انتقال بین انبارها: ${details}`,
+            ? `تطبیق انتقال‌ها با موفقیت انجام شد. کلیه تراکنش‌های کاردکس مبدا و مقصد قرینه و همگام هستند${sessionSuffix}.` 
+            : `خطا در انتقال بین انبارها: ${details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: recordsTestedCount,
         });
@@ -395,7 +498,7 @@ export const systemDiagnosticService = {
     // 5. Document ↔ Accounting
     try {
       const start = performance.now();
-      const invoices = db.queryByBusiness<any>('documents', businessId).filter(
+      const invoices = db.queryByBusiness<any>('documents', targetBizId).filter(
         (d) => d.status === 'confirmed' && (d.document_type === 'sales_invoice' || d.document_type === 'purchase_invoice')
       );
 
@@ -405,7 +508,7 @@ export const systemDiagnosticService = {
           category: 'Integrity',
           title: 'تطبیق اسناد و حسابداری',
           status: 'WARN',
-          message: 'هیچ فاکتور خرید یا فروش تایید شده‌ای برای بررسی تطبیق حسابداری یافت نشد.',
+          message: `هیچ فاکتور خرید یا فروش تایید شده‌ای برای بررسی تطبیق حسابداری در محیط تست یافت نشد${sessionSuffix}.`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
@@ -419,11 +522,11 @@ export const systemDiagnosticService = {
           
           if (inv.document_type === 'sales_invoice') {
             const journal = db.queryAll<any>('journal_entries').find(
-              (j) => j.reference_type === 'sales_invoice' && j.reference_id === inv.id
+              (j) => j.business_id === targetBizId && j.reference_type === 'sales_invoice' && j.reference_id === inv.id
             );
             if (!journal) {
               docFailures++;
-              details += `فاکتور فروش ${inv.doc_number || inv.id}: فاقد سند حسابداری متناظر است. `;
+              details += `Missing accounting journal for test document: فاکتور فروش ${inv.doc_number || inv.id}. `;
               continue;
             }
             const lines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
@@ -435,8 +538,8 @@ export const systemDiagnosticService = {
               details += `فاکتور فروش ${inv.doc_number || inv.id}: مغایرت مبلغ فاکتور (${invTotal}) با سند حسابداری (بدهکار: ${debitSum}، بستانکار: ${creditSum}). `;
             }
 
-            const hasRevenue = lines.some((l) => l.account_code === '4010' && l.credit > 0);
-            const hasCashOrReceivable = lines.some((l) => (l.account_code === '1010' || l.account_code === '1020') && l.debit > 0);
+            const hasRevenue = lines.some((l) => l.account_code === '4010' && Number(l.credit) > 0);
+            const hasCashOrReceivable = lines.some((l) => (l.account_code === '1010' || l.account_code === '1020') && Number(l.debit) > 0);
             if (!hasRevenue || !hasCashOrReceivable) {
               docFailures++;
               details += `فاکتور فروش ${inv.doc_number || inv.id}: ساختار سرفصل‌های آرتیکل اشتباه است (درآمد یا بانک/دریافتنی مفقود است). `;
@@ -445,11 +548,11 @@ export const systemDiagnosticService = {
 
           } else if (inv.document_type === 'purchase_invoice') {
             const journal = db.queryAll<any>('journal_entries').find(
-              (j) => j.reference_type === 'purchase_invoice' && j.reference_id === inv.id
+              (j) => j.business_id === targetBizId && j.reference_type === 'purchase_invoice' && j.reference_id === inv.id
             );
             if (!journal) {
               docFailures++;
-              details += `فاکتور خرید ${inv.doc_number || inv.id}: فاقد سند حسابداری متناظر است. `;
+              details += `Missing accounting journal for test document: فاکتور خرید ${inv.doc_number || inv.id}. `;
               continue;
             }
             const lines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
@@ -461,8 +564,8 @@ export const systemDiagnosticService = {
               details += `فاکتور خرید ${inv.doc_number || inv.id}: مغایرت مبلغ فاکتور (${invTotal}) با سند حسابداری (بدهکار: ${debitSum}، بستانکار: ${creditSum}). `;
             }
 
-            const hasInventory = lines.some((l) => l.account_code === '1030' && l.debit > 0);
-            const hasCashOrPayable = lines.some((l) => (l.account_code === '1010' || l.account_code === '2010') && l.credit > 0);
+            const hasInventory = lines.some((l) => l.account_code === '1030' && Number(l.debit) > 0);
+            const hasCashOrPayable = lines.some((l) => (l.account_code === '1010' || l.account_code === '2010') && Number(l.credit) > 0);
             if (!hasInventory || !hasCashOrPayable) {
               docFailures++;
               details += `فاکتور خرید ${inv.doc_number || inv.id}: ساختار سرفصل‌های آرتیکل اشتباه است (موجودی یا بانک/پرداختنی مفقود است). `;
@@ -477,8 +580,8 @@ export const systemDiagnosticService = {
           title: 'تطبیق اسناد و حسابداری',
           status: docFailures === 0 ? 'PASS' : 'FAIL',
           message: docFailures === 0 
-            ? 'تطبیق با موفقیت انجام شد. تمامی مبالغ فاکتورهای خرید و فروش با مجموع تراکنش‌های دفتری همخوانی کامل دارند.' 
-            : `خطا در تطبیق مالی اسناد: ${details}`,
+            ? `تطبیق با موفقیت انجام شد. تمامی مبالغ فاکتورهای خرید و فروش با مجموع تراکنش‌های دفتری همخوانی کامل دارند${sessionSuffix}.` 
+            : `خطا در تطبیق مالی اسناد: ${details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: recordsTestedCount,
         });
@@ -490,8 +593,8 @@ export const systemDiagnosticService = {
     // 6. Treasury Reconciliation
     try {
       const start = performance.now();
-      const payments = db.queryByBusiness<any>('payments', businessId);
-      const receipts = db.queryByBusiness<any>('receipts', businessId);
+      const payments = db.queryByBusiness<any>('payments', targetBizId);
+      const receipts = db.queryByBusiness<any>('receipts', targetBizId);
 
       if (payments.length === 0 && receipts.length === 0) {
         results.push({
@@ -499,7 +602,7 @@ export const systemDiagnosticService = {
           category: 'Integrity',
           title: 'تطبیق خزانه و عملیات نقدینگی',
           status: 'WARN',
-          message: 'هیچ سند دریافت یا پرداخت تایید شده‌ای برای تطبیق خزانه یافت نشد.',
+          message: `هیچ سند دریافت یا پرداخت تایید شده‌ای برای تطبیق خزانه در محیط تست یافت نشد${sessionSuffix}.`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 0,
         });
@@ -512,7 +615,7 @@ export const systemDiagnosticService = {
           if (p.status !== 'confirmed') continue;
           
           const tx = db.queryAll<any>('treasury_transactions').find(
-            (t) => t.business_id === businessId && t.account_id === p.cash_account && t.transaction_type === 'OUT' && Number(t.amount) === Number(p.amount)
+            (t) => t.business_id === targetBizId && t.account_id === p.cash_account && t.transaction_type === 'OUT' && Number(t.amount) === Number(p.amount)
           );
           if (!tx) {
             treasuryFailures++;
@@ -526,7 +629,7 @@ export const systemDiagnosticService = {
           if (r.status !== 'confirmed') continue;
 
           const tx = db.queryAll<any>('treasury_transactions').find(
-            (t) => t.business_id === businessId && t.account_id === r.cash_account && t.transaction_type === 'IN' && Number(t.amount) === Number(r.amount)
+            (t) => t.business_id === targetBizId && t.account_id === r.cash_account && t.transaction_type === 'IN' && Number(t.amount) === Number(r.amount)
           );
           if (!tx) {
             treasuryFailures++;
@@ -542,8 +645,8 @@ export const systemDiagnosticService = {
           title: 'تطبیق خزانه',
           status: treasuryFailures === 0 ? 'PASS' : 'FAIL',
           message: treasuryFailures === 0 
-            ? 'تطبیق خزانه موفقیت‌آمیز بود. تمام دریافتی‌ها و پرداختی‌های صندوق‌ها با تراکنش‌های نقدینگی ثبت شده قرینه هستند.' 
-            : `خطا در تطبیق نقدینگی خزانه: ${details}`,
+            ? `تطبیق خزانه موفقیت‌آمیز بود. تمام دریافتی‌ها و پرداختی‌های صندوق‌ها با تراکنش‌های نقدینگی ثبت شده قرینه هستند${sessionSuffix}.` 
+            : `خطا در تطبیق نقدینگی خزانه: ${details}${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: recordsTestedCount,
         });
@@ -565,7 +668,7 @@ export const systemDiagnosticService = {
         
         db.getState().journal_entries.push({
           id: tempEntryId,
-          business_id: businessId,
+          business_id: targetBizId,
           entry_number: 99999,
           date: new Date().toISOString().split('T')[0],
           description: 'تست ایزوله منفی تراز حسابداری',
@@ -610,8 +713,8 @@ export const systemDiagnosticService = {
           title: 'تست تشخیص فساد داده (Negative Test)',
           status: overallPass ? 'PASS' : 'FAIL',
           message: overallPass 
-            ? 'تست منفی با موفقیت تایید شد. سیستم به درستی صحت داده‌های معتبر (PASS) و فساد عمدی آرتیکل‌ها (FAIL) را تشخیص می‌دهد.' 
-            : `تست منفی ناموفق. عدم عبور از مراحل (مرحله ۱ معتبر: ${pass1}، مرحله ۲ مخدوش: ${pass2}، مرحله ۳ بازسازی: ${pass3})`,
+            ? `تست منفی با موفقیت تایید شد. سیستم به درستی صحت داده‌های معتبر (PASS) و فساد عمدی آرتیکل‌ها (FAIL) را تشخیص می‌دهد${sessionSuffix}.` 
+            : `تست منفی ناموفق. عدم عبور از مراحل (مرحله ۱ معتبر: ${pass1}، مرحله ۲ مخدوش: ${pass2}، مرحله ۳ بازسازی: ${pass3})${sessionSuffix}`,
           durationMs: Math.round(performance.now() - start),
           recordsTested: 3,
         });
