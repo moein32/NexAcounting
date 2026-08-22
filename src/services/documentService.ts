@@ -998,6 +998,7 @@ export const documentService = {
       db.beginTransaction();
       try {
         const fullDoc = await this.getDocumentById(businessId, id);
+        const isDocCash = fullDoc.payment_status === 'cash' || fullDoc.payment_status === 'paid';
         
         if (fullDoc.document_type === 'purchase_invoice') {
           // Process cost layers
@@ -1008,7 +1009,7 @@ export const documentService = {
             date: fullDoc.document_date,
             party_id: fullDoc.party_id,
             grand_total: fullDoc.grand_total,
-            is_cash: fullDoc.is_cash,
+            is_cash: isDocCash,
             number: fullDoc.document_number,
           });
         } else if (fullDoc.document_type === 'sales_invoice') {
@@ -1020,7 +1021,7 @@ export const documentService = {
             date: fullDoc.document_date,
             party_id: fullDoc.party_id,
             grand_total: fullDoc.grand_total,
-            is_cash: fullDoc.is_cash,
+            is_cash: isDocCash,
             number: fullDoc.document_number,
           });
         } else if (fullDoc.document_type === 'sales_return') {
@@ -1032,7 +1033,7 @@ export const documentService = {
             date: fullDoc.document_date,
             party_id: fullDoc.party_id,
             grand_total: fullDoc.grand_total,
-            is_cash: fullDoc.is_cash,
+            is_cash: isDocCash,
             number: fullDoc.document_number,
           });
         } else if (fullDoc.document_type === 'purchase_return') {
@@ -1044,7 +1045,7 @@ export const documentService = {
             date: fullDoc.document_date,
             party_id: fullDoc.party_id,
             grand_total: fullDoc.grand_total,
-            is_cash: fullDoc.is_cash,
+            is_cash: isDocCash,
             number: fullDoc.document_number,
           });
         }

@@ -22,6 +22,19 @@ export const AccountingEngine = {
       description: string;
     }[]
   ): { entry: JournalEntry; lines: JournalLine[] } {
+    // Idempotency check: If an existing posted journal exists for that document, do not create another one.
+    if (entryData.reference_type && entryData.reference_id) {
+      const existing = JournalRepository.getEntries(businessId).find(
+        (j) => j.reference_type === entryData.reference_type &&
+               j.reference_id === entryData.reference_id &&
+               j.status === 'posted'
+      );
+      if (existing) {
+        const existingLines = JournalRepository.getLinesForEntry(existing.id);
+        return { entry: existing, lines: existingLines };
+      }
+    }
+
     // 1. Resolve Account IDs from codes
     const processedLines = lines.map(line => {
       const account = AccountRepository.getAccountByCode(businessId, line.account_code);

@@ -53,7 +53,7 @@ export interface RevaluationLog {
 
 export const CostEngine = {
   getCostMethod(businessId: string): CostMethod {
-    const method = SettingsRepository.get('inventory_cost_method');
+    const method = SettingsRepository.get('inventory_cost_method', businessId);
     return (method === 'fifo' || method === 'weighted_average') ? method : 'weighted_average';
   },
 
@@ -68,7 +68,7 @@ export const CostEngine = {
     if (this.isCostMethodLocked(businessId)) {
       throw new Error('به دلیل وجود اسناد مالی و حرکتی صادر شده در این سال مالی، امکان تغییر مستقیم روش ارزش‌گذاری وجود ندارد. برای تغییر روش، ابتدا باید بازسازی کلیه Layerها انجام شود.');
     }
-    SettingsRepository.set('inventory_cost_method', method);
+    SettingsRepository.set('inventory_cost_method', method, businessId);
   },
 
   /**

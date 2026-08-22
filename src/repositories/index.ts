@@ -640,6 +640,8 @@ export const DocumentRepository = {
       }
 
       // Auto-post sales / purchase invoices to General Accounting Ledger
+      // DISABLED: Legacy duplicate pathway. Active pathway in documentService handles this canonically.
+      /*
       if (status === 'confirmed') {
         const isCash = doc.payment_status === 'cash' || doc.payment_status === 'paid';
         if (doc.document_type === 'sales_invoice') {
@@ -662,6 +664,7 @@ export const DocumentRepository = {
           });
         }
       }
+      */
 
       db.commit();
       return updated;

@@ -529,7 +529,11 @@ export const systemDiagnosticService = {
               details += `Missing accounting journal for test document: فاکتور فروش ${inv.doc_number || inv.id}. `;
               continue;
             }
-            const lines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
+            const rawLines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
+            const lines = rawLines.map((l) => {
+              const account = db.queryById<any>('accounts', l.account_id);
+              return { ...l, account_code: account ? account.code : '' };
+            });
             const debitSum = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0);
             const creditSum = lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0);
 
@@ -555,7 +559,11 @@ export const systemDiagnosticService = {
               details += `Missing accounting journal for test document: فاکتور خرید ${inv.doc_number || inv.id}. `;
               continue;
             }
-            const lines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
+            const rawLines = db.queryAll<any>('journal_lines').filter((l) => l.journal_id === journal.id);
+            const lines = rawLines.map((l) => {
+              const account = db.queryById<any>('accounts', l.account_id);
+              return { ...l, account_code: account ? account.code : '' };
+            });
             const debitSum = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0);
             const creditSum = lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0);
 
