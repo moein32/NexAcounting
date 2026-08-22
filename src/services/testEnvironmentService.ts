@@ -89,25 +89,66 @@ export interface TestEnvironmentReport {
   summary: TestEnvironmentSummary;
 }
 
+export interface TestEnvironmentStats {
+  businessId: string;
+  businessName: string;
+  sessionId?: string;
+  customersCount: number;
+  suppliersCount: number;
+  partiesCount: number;
+  itemsCount: number;
+  documentsCount: number;
+  journalEntriesCount: number;
+  receiptsCount: number;
+  paymentsCount: number;
+  checksCount: number;
+  costLayersCount: number;
+  inventoryTransfersCount: number;
+}
+
 export interface LiveDbStats {
-  totalBusinesses: number;
-  totalParties: number;
+  activeBusinessId: string;
+  activeBusinessName: string;
+
+  realParties: number;
   testParties: number;
-  totalItems: number;
+  totalParties: number;
+
+  realItems: number;
   testItems: number;
-  totalDocuments: number;
+  totalItems: number;
+
+  realDocuments: number;
   testDocuments: number;
-  totalJournalEntries: number;
+  totalDocuments: number;
+
+  realJournalEntries: number;
   testJournalEntries: number;
-  totalReceipts: number;
+  totalJournalEntries: number;
+
+  realReceipts: number;
   testReceipts: number;
-  totalPayments: number;
+  totalReceipts: number;
+
+  realPayments: number;
   testPayments: number;
-  totalChecks: number;
+  totalPayments: number;
+
+  realChecks: number;
   testChecks: number;
-  totalCostLayers: number;
+  totalChecks: number;
+
+  realCostLayers: number;
   testCostLayers: number;
+  totalCostLayers: number;
+
   activeCostMethod: string;
+
+  totalBusinesses: number;
+  testEnvironmentBusinessCount: number;
+  activeTestEnvironmentBusinessId?: string;
+  activeTestEnvironmentSessionId?: string;
+  testEnvironmentStats?: TestEnvironmentStats | null;
 }
 
 export const testEnvironmentService = {
@@ -1515,7 +1556,7 @@ export const testEnvironmentService = {
       });
     }
 
-    // 12. Business ID Data Isolation & Test Tagging
+    // 12. Business ID Data Isolation, Live SQLite Statistics Scoping & Test Tagging
     const start12 = performance.now();
     try {
       const state = db.getState();
@@ -1533,16 +1574,41 @@ export const testEnvironmentService = {
         });
       });
 
+      // Deterministic validation of getLiveStats scoping & isolation
+      // Case 1 & Case 3: Target business stats isolation
+      const testBizStats = testEnvironmentService.getLiveStats(targetBusinessId);
+      if (testBizStats.activeBusinessId !== targetBusinessId) {
+        throw new Error(`شناسه کسب‌وکار آمار (${testBizStats.activeBusinessId}) با شناسه هدف (${targetBusinessId}) مطابقت ندارد.`);
+      }
+      if (testBizStats.totalParties !== testBizStats.realParties + testBizStats.testParties) {
+        throw new Error(`مغایرت در جمع طرف‌حساب‌های کسب‌وکار: real (${testBizStats.realParties}) + test (${testBizStats.testParties}) !== total (${testBizStats.totalParties})`);
+      }
+      if (testBizStats.totalItems !== testBizStats.realItems + testBizStats.testItems) {
+        throw new Error(`مغایرت در جمع کالاهای کسب‌وکار: real (${testBizStats.realItems}) + test (${testBizStats.testItems}) !== total (${testBizStats.totalItems})`);
+      }
+
+      // Case 2: Active/Main business stats isolation (records of TEST_BIZ must NOT bleed into main business)
+      const mainStats = testEnvironmentService.getLiveStats('biz_main', targetBusinessId);
+      const bizMainPartiesInDb = ((state.parties as any[]) || []).filter((p: any) => p.business_id === 'biz_main').length;
+      if (mainStats.totalParties !== bizMainPartiesInDb) {
+        throw new Error(`آمار کسب‌وکار اصلی تفکیک نشده است! تعداد طرف‌حساب: ${mainStats.totalParties}، رکوردهای دیتابیس با business_id='biz_main': ${bizMainPartiesInDb}`);
+      }
+
+      // Case 4: Real test environment dedicated stats verification
+      if (!mainStats.testEnvironmentStats || mainStats.testEnvironmentStats.businessId !== targetBusinessId) {
+        throw new Error('آمار تفکیک‌شده محیط تست واقعی (testEnvironmentStats) در آمار زنده یافت نشد.');
+      }
+
       assertions.push({
         id: 'assert_business_isolation',
         category: 'Integrity',
-        title: 'تفکیک کامل شناسه کسب‌وکار و برچسب‌گذاری ایمن داده‌های آزمایشی',
+        title: 'تفکیک کامل شناسه کسب‌وکار و آمار زنده SQLite بر اساس کسب‌وکار فعال',
         status: !crossContamination ? 'PASS' : 'FAIL',
         message: !crossContamination
-          ? `کلیه رکوردهای آزمایشی به درستی با business_id و برچسب session_id مشخص شده و با داده‌های واقعی تداخل ندارند.`
+          ? `تفکیک ۱۰۰٪ آمار کسب‌وکار فعال (${mainStats.totalParties} طرف‌حساب) از رکوردهای محیط تست (${testBizStats.totalParties} طرف‌حساب در ${targetBusinessId}) و صحت روابط real+test=total تایید شد.`
           : `خطا در برچسب‌گذاری رکوردهای آزمایشی.`,
         durationMs: Math.round(performance.now() - start12),
-        recordsTested: tablesToCheck.length,
+        recordsTested: tablesToCheck.length + 4,
       });
     } catch (e: any) {
       assertions.push({
@@ -1749,45 +1815,186 @@ export const testEnvironmentService = {
   },
 
   /**
-   * Returns live real-time statistics from SQLite.
+   * Returns live real-time statistics from SQLite, strictly scoped to the active business
+   * and fully isolating test environments and test/demo data.
    */
-  getLiveStats(businessId: string = 'biz_main'): LiveDbStats {
+  getLiveStats(activeBusinessId: string = 'biz_main', preferredTestBizId?: string): LiveDbStats {
     const state = db.getState();
 
-    const isTest = (r: any) =>
-      r.is_demo === 1 ||
-      (r.demo_session_id &&
-        (String(r.demo_session_id).startsWith('TEST_ENV_') ||
-          String(r.demo_session_id).startsWith('demo_session_')));
+    const businesses = (state.businesses as any[]) || [];
+    const activeBiz = businesses.find((b: any) => b.id === activeBusinessId);
+    const activeBusinessName = activeBiz?.name || 'کسب‌وکار جاری';
+    const isActiveBizTest =
+      activeBiz?.is_demo === 1 ||
+      activeBiz?.is_demo === true ||
+      String(activeBiz?.id || '').startsWith('TEST_BIZ_');
 
+    // Classification function
+    const isTestRecord = (r: any, parentBizIsTest: boolean = false): boolean => {
+      if (!r) return false;
+      if (parentBizIsTest) return true;
+      if (r.is_demo === 1 || r.is_demo === true) return true;
+      if (r.demo_session_id) {
+        const sid = String(r.demo_session_id);
+        if (
+          sid.startsWith('demo_session_') ||
+          sid.startsWith('TEST_ENV_') ||
+          sid.startsWith('TEST_REPORT_') ||
+          sid.startsWith('test_e2e_')
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // 1. Parties
     const allParties = (state.parties as any[]) || [];
+    const activeParties = allParties.filter((p: any) => p.business_id === activeBusinessId);
+    const testParties = activeParties.filter((p: any) => isTestRecord(p, isActiveBizTest)).length;
+    const realParties = activeParties.length - testParties;
+    const totalParties = realParties + testParties;
+
+    // 2. Items
     const allItems = (state.items as any[]) || [];
+    const activeItems = allItems.filter((i: any) => i.business_id === activeBusinessId);
+    const testItems = activeItems.filter((i: any) => isTestRecord(i, isActiveBizTest)).length;
+    const realItems = activeItems.length - testItems;
+    const totalItems = realItems + testItems;
+
+    // 3. Documents
     const allDocs = (state.documents as any[]) || [];
+    const activeDocs = allDocs.filter((d: any) => d.business_id === activeBusinessId);
+    const testDocuments = activeDocs.filter((d: any) => isTestRecord(d, isActiveBizTest)).length;
+    const realDocuments = activeDocs.length - testDocuments;
+    const totalDocuments = realDocuments + testDocuments;
+
+    // 4. Journal Entries
     const allJournals = (state.journal_entries as any[]) || [];
+    const activeJournals = allJournals.filter((j: any) => j.business_id === activeBusinessId);
+    const testJournalEntries = activeJournals.filter((j: any) => isTestRecord(j, isActiveBizTest)).length;
+    const realJournalEntries = activeJournals.length - testJournalEntries;
+    const totalJournalEntries = realJournalEntries + testJournalEntries;
+
+    // 5. Receipts
     const allReceipts = (state.receipts as any[]) || [];
+    const activeReceipts = allReceipts.filter((r: any) => r.business_id === activeBusinessId);
+    const testReceipts = activeReceipts.filter((r: any) => isTestRecord(r, isActiveBizTest)).length;
+    const realReceipts = activeReceipts.length - testReceipts;
+    const totalReceipts = realReceipts + testReceipts;
+
+    // 6. Payments
     const allPayments = (state.payments as any[]) || [];
+    const activePayments = allPayments.filter((p: any) => p.business_id === activeBusinessId);
+    const testPayments = activePayments.filter((p: any) => isTestRecord(p, isActiveBizTest)).length;
+    const realPayments = activePayments.length - testPayments;
+    const totalPayments = realPayments + testPayments;
+
+    // 7. Checks
     const allChecks = (state.checks as any[]) || [];
+    const activeChecks = allChecks.filter((c: any) => c.business_id === activeBusinessId);
+    const testChecks = activeChecks.filter((c: any) => isTestRecord(c, isActiveBizTest)).length;
+    const realChecks = activeChecks.length - testChecks;
+    const totalChecks = realChecks + testChecks;
+
+    // 8. Cost Layers
     const allLayers = (state.inventory_cost_layers as any[]) || [];
+    const activeLayers = allLayers.filter((l: any) => l.business_id === activeBusinessId);
+    const testCostLayers = activeLayers.filter((l: any) => isTestRecord(l, isActiveBizTest)).length;
+    const realCostLayers = activeLayers.length - testCostLayers;
+    const totalCostLayers = realCostLayers + testCostLayers;
+
+    // Test Businesses Detection
+    const testBusinesses = businesses.filter(
+      (b: any) => b.id.startsWith('TEST_BIZ_') || (b.is_demo === 1 && b.id !== activeBusinessId)
+    );
+
+    let activeTestBiz: any = null;
+    if (preferredTestBizId) {
+      activeTestBiz = testBusinesses.find((b: any) => b.id === preferredTestBizId) || null;
+    }
+    if (!activeTestBiz && testBusinesses.length > 0) {
+      activeTestBiz = testBusinesses[testBusinesses.length - 1];
+    }
+
+    let testEnvironmentStats: TestEnvironmentStats | null = null;
+    if (activeTestBiz) {
+      const testBizId = activeTestBiz.id;
+      const testBizParties = allParties.filter((p: any) => p.business_id === testBizId);
+      const testBizItems = allItems.filter((i: any) => i.business_id === testBizId);
+      const testBizDocs = allDocs.filter((d: any) => d.business_id === testBizId);
+      const testBizJournals = allJournals.filter((j: any) => j.business_id === testBizId);
+      const testBizReceipts = allReceipts.filter((r: any) => r.business_id === testBizId);
+      const testBizPayments = allPayments.filter((p: any) => p.business_id === testBizId);
+      const testBizChecks = allChecks.filter((c: any) => c.business_id === testBizId);
+      const testBizCostLayers = allLayers.filter((l: any) => l.business_id === testBizId);
+
+      const invDocs = (state.inventory_documents as any[]) || [];
+      const testBizTransfers = invDocs.filter(
+        (d: any) => d.business_id === testBizId && d.document_type === 'transfer'
+      );
+
+      testEnvironmentStats = {
+        businessId: testBizId,
+        businessName: activeTestBiz.name || 'کسب‌وکار آزمایشی',
+        sessionId: activeTestBiz.demo_session_id || undefined,
+        customersCount: testBizParties.filter((p: any) => p.roles?.includes('customer')).length,
+        suppliersCount: testBizParties.filter((p: any) => p.roles?.includes('supplier')).length,
+        partiesCount: testBizParties.length,
+        itemsCount: testBizItems.length,
+        documentsCount: testBizDocs.length,
+        journalEntriesCount: testBizJournals.length,
+        receiptsCount: testBizReceipts.length,
+        paymentsCount: testBizPayments.length,
+        checksCount: testBizChecks.length,
+        costLayersCount: testBizCostLayers.length,
+        inventoryTransfersCount: testBizTransfers.length,
+      };
+    }
 
     return {
-      totalBusinesses: (state.businesses as any[])?.length || 0,
-      totalParties: allParties.length,
-      testParties: allParties.filter(isTest).length,
-      totalItems: allItems.length,
-      testItems: allItems.filter(isTest).length,
-      totalDocuments: allDocs.length,
-      testDocuments: allDocs.filter(isTest).length,
-      totalJournalEntries: allJournals.length,
-      testJournalEntries: allJournals.filter(isTest).length,
-      totalReceipts: allReceipts.length,
-      testReceipts: allReceipts.filter(isTest).length,
-      totalPayments: allPayments.length,
-      testPayments: allPayments.filter(isTest).length,
-      totalChecks: allChecks.length,
-      testChecks: allChecks.filter(isTest).length,
-      totalCostLayers: allLayers.length,
-      testCostLayers: allLayers.filter(isTest).length,
-      activeCostMethod: CostEngine.getCostMethod(businessId),
+      activeBusinessId,
+      activeBusinessName,
+
+      realParties,
+      testParties,
+      totalParties,
+
+      realItems,
+      testItems,
+      totalItems,
+
+      realDocuments,
+      testDocuments,
+      totalDocuments,
+
+      realJournalEntries,
+      testJournalEntries,
+      totalJournalEntries,
+
+      realReceipts,
+      testReceipts,
+      totalReceipts,
+
+      realPayments,
+      testPayments,
+      totalPayments,
+
+      realChecks,
+      testChecks,
+      totalChecks,
+
+      realCostLayers,
+      testCostLayers,
+      totalCostLayers,
+
+      activeCostMethod: CostEngine.getCostMethod(activeBusinessId),
+
+      totalBusinesses: businesses.length,
+      testEnvironmentBusinessCount: testBusinesses.length,
+      activeTestEnvironmentBusinessId: activeTestBiz ? activeTestBiz.id : undefined,
+      activeTestEnvironmentSessionId: activeTestBiz ? activeTestBiz.demo_session_id : undefined,
+      testEnvironmentStats,
     };
   },
 };

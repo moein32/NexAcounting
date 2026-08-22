@@ -37,6 +37,7 @@ import {
   RotateCcw,
   FileCheck,
   AlertTriangle,
+  FlaskConical,
 } from 'lucide-react';
 import { BackupRepository } from '../../../repositories';
 import { inventoryService } from '../../../services/inventoryService';
@@ -855,93 +856,256 @@ export function SettingsPage() {
         <div className="space-y-6">
           {/* Live SQLite Database Status Card */}
           {liveStats && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Database className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <CardTitle className="text-base text-slate-900 dark:text-white">وضعیت زنده پایگاه داده SQLite و ایزولاسیون داده‌ها</CardTitle>
-                      <CardDescription>بررسی تفکیک داده‌های واقعی کاربر و رکوردهای آزمایشی در جداول محلی</CardDescription>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <Database className="w-5 h-5 text-indigo-600" />
+                      <div>
+                        <CardTitle className="text-base text-slate-900 dark:text-white">
+                          وضعیت زنده پایگاه داده SQLite و ایزولاسیون داده‌ها
+                        </CardTitle>
+                        <CardDescription>
+                          داده‌های کسب‌وکار فعال: <strong className="text-slate-800 dark:text-slate-200">{liveStats.activeBusinessName}</strong> ({liveStats.activeBusinessId})
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<RefreshCw className="w-3.5 h-3.5" />}
+                        onClick={() => setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id, testEnvSummary?.business_id))}
+                      >
+                        تازه‌سازی آمار
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<RefreshCw className="w-3.5 h-3.5" />}
-                    onClick={() => setLiveStats(testEnvironmentService.getLiveStats(currentBusiness.id))}
-                  >
-                    تازه‌سازی آمار
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">طرف‌حساب‌ها (مشتری/تامین‌کننده):</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalParties} کل</span>
-                      <Badge variant="primary">{liveStats.testParties} تستی</Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    {/* Parties */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">طرف‌حساب‌ها (مشتری و تامین‌کننده)</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realParties}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testParties}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalParties}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">کالاها و خدمات:</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalItems} کل</span>
-                      <Badge variant="primary">{liveStats.testItems} تستی</Badge>
+                    {/* Items */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">کالاها و خدمات</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realItems}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testItems}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalItems}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">اسناد و فاکتورها:</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalDocuments} کل</span>
-                      <Badge variant="primary">{liveStats.testDocuments} تستی</Badge>
+                    {/* Documents */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">اسناد و فاکتورها</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realDocuments}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testDocuments}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalDocuments}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">اسناد حسابداری (سرفصل‌ها):</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalJournalEntries} کل</span>
-                      <Badge variant="primary">{liveStats.testJournalEntries} تستی</Badge>
+                    {/* Journal Entries */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">اسناد حسابداری (دفتر روزنامه)</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realJournalEntries}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testJournalEntries}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalJournalEntries}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">دریافت و پرداخت‌ها:</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalReceipts + liveStats.totalPayments} کل</span>
-                      <Badge variant="primary">{liveStats.testReceipts + liveStats.testPayments} تستی</Badge>
+                    {/* Receipts & Payments */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">دریافت و پرداخت‌ها</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realReceipts + liveStats.realPayments}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testReceipts + liveStats.testPayments}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalReceipts + liveStats.totalPayments}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">چک‌های صیادی:</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalChecks} کل</span>
-                      <Badge variant="primary">{liveStats.testChecks} تستی</Badge>
+                    {/* Checks */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">چک‌های صیادی</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realChecks}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testChecks}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalChecks}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">لایه‌های بهای تمام‌شده:</span>
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{liveStats.totalCostLayers} کل</span>
-                      <Badge variant="primary">{liveStats.testCostLayers} تستی</Badge>
+                    {/* Cost Layers */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">لایه‌های بهای تمام‌شده</div>
+                      <div className="grid grid-cols-3 gap-1 pt-1 text-center border-t border-slate-200/50 dark:border-slate-700/50">
+                        <div>
+                          <div className="text-[10px] text-slate-400">واقعی</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveStats.realCostLayers}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">تستی</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm">{liveStats.testCostLayers}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">کل</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{liveStats.totalCostLayers}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
-                    <span className="text-slate-500">روش بهای تمام‌شده:</span>
-                    <div className="flex items-center justify-between font-bold pt-0.5">
-                      <Badge variant="success">{liveStats.activeCostMethod === 'fifo' ? 'FIFO (اولین صادره)' : 'میانگین موزون'}</Badge>
+                    {/* Cost Method & Business Counts */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div className="text-slate-500">روش بهای تمام‌شده:</div>
+                        <Badge variant="success" className="font-bold">
+                          {liveStats.activeCostMethod === 'fifo' ? 'FIFO (اولین صادره)' : 'میانگین موزون'}
+                        </Badge>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>کسب‌وکارهای دیتابیس:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{liveStats.totalBusinesses}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Dedicated Real Test Environment Card */}
+              {liveStats.testEnvironmentStats && (
+                <Card className="border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-white to-indigo-50/20 dark:from-slate-900 dark:to-indigo-950/20">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <FlaskConical className="w-5 h-5 text-indigo-600" />
+                        <div>
+                          <CardTitle className="text-base text-slate-900 dark:text-white">
+                            محیط تست واقعی (Real Test Environment)
+                          </CardTitle>
+                          <CardDescription>
+                            شناسه کسب‌وکار آزمایشی: <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{liveStats.testEnvironmentStats.businessId}</span>
+                            {liveStats.testEnvironmentStats.sessionId && ` | نشست: ${liveStats.testEnvironmentStats.sessionId}`}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="primary">ایزوله شده در SQLite</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs">
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">مشتریان</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.customersCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">تامین‌کنندگان</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.suppliersCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">طرف‌حساب‌ها (کل)</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.partiesCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">کالاها و خدمات</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.itemsCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">اسناد و فاکتورها</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.documentsCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">اسناد حسابداری</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.journalEntriesCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">دریافت‌ها</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.receiptsCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">پرداخت‌ها</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.paymentsCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">چک‌های صیادی</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.checksCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center">
+                        <div className="text-slate-500 text-[11px]">لایه‌های بهای تمام‌شده</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.costLayersCount}</div>
+                      </div>
+                      <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-center col-span-2">
+                        <div className="text-slate-500 text-[11px]">انتقال بین انبارها</div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{liveStats.testEnvironmentStats.inventoryTransfersCount}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
