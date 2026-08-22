@@ -98,7 +98,7 @@ export function CreateItemPage() {
   const totalSteps = itemType === 'product' ? 5 : 4;
 
   const validateStep = async (targetStep: number): Promise<boolean> => {
-    if (targetStep > 1 && !name.trim()) {
+    if (targetStep > 2 && !name.trim()) {
       showToast.error('نام کالا یا خدمت الزامی است.');
       return false;
     }
