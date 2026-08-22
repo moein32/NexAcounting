@@ -577,7 +577,7 @@ export const systemDiagnosticService = {
       // Create and confirm warehouse transfer document
       const transferDoc = await inventoryService.createInventoryDocument(businessId, {
         document_type: 'transfer',
-        source_warehouse_id: testWarehouseA.id,
+        warehouse_id: testWarehouseA.id,
         target_warehouse_id: testWarehouseB.id,
         document_date: new Date().toISOString().split('T')[0],
         status: 'draft',

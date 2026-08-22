@@ -174,6 +174,16 @@ function getFromStorage<T>(key: string, initial: T[]): T[] {
       if (list.length === 0) return initial;
       return list;
     }
+    if (key === STORAGE_KEYS.DOCUMENTS) {
+      const list = db.queryAll<InventoryDocument>('inventory_documents');
+      if (list.length === 0) return initial as unknown as T[];
+      return list as unknown as T[];
+    }
+    if (key === STORAGE_KEYS.DOCUMENT_ITEMS) {
+      const list = db.queryAll<InventoryDocumentItem>('inventory_document_items');
+      if (list.length === 0) return initial as unknown as T[];
+      return list as unknown as T[];
+    }
     const raw = localStorage.getItem(key);
     if (!raw) {
       localStorage.setItem(key, JSON.stringify(initial));
@@ -226,6 +236,28 @@ function setToStorage<T>(key: string, data: T[]) {
           db.updateRecord('inventory_transactions', tx.id, tx);
         } else {
           db.insertRecord('inventory_transactions', tx);
+        }
+      });
+      return;
+    }
+    if (key === STORAGE_KEYS.DOCUMENTS) {
+      (data as unknown as InventoryDocument[]).forEach((doc) => {
+        const existing = db.queryById('inventory_documents', doc.id);
+        if (existing) {
+          db.updateRecord('inventory_documents', doc.id, doc);
+        } else {
+          db.insertRecord('inventory_documents', doc);
+        }
+      });
+      return;
+    }
+    if (key === STORAGE_KEYS.DOCUMENT_ITEMS) {
+      (data as unknown as InventoryDocumentItem[]).forEach((item) => {
+        const existing = db.queryById('inventory_document_items', item.id);
+        if (existing) {
+          db.updateRecord('inventory_document_items', item.id, item);
+        } else {
+          db.insertRecord('inventory_document_items', item);
         }
       });
       return;

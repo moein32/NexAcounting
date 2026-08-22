@@ -1243,17 +1243,119 @@ export const testEnvironmentService = {
       const invDocs = db.queryByBusiness<any>('inventory_documents', targetBusinessId);
       const transfers = invDocs.filter((d) => d.document_type === 'transfer' && d.status === 'confirmed');
 
-      let transferValid = transfers.length > 0;
+      if (transfers.length === 0) {
+        throw new Error('هیچ سند انتقال بین‌انباری تایید شده‌ای در پایگاه داده یافت نشد.');
+      }
+
+      const invItems = db.queryAll<any>('inventory_document_items');
+      const allTx = db.queryByBusiness<any>('inventory_transactions', targetBusinessId);
+      const allBalances = db.queryByBusiness<any>('inventory_balances', targetBusinessId);
+
+      let auditedTransfers = 0;
+      let auditedItemsCount = 0;
+
+      for (const transfer of transfers) {
+        // 1. Check document existence and properties
+        if (transfer.document_type !== 'transfer') {
+          throw new Error(`نوع سند نامعتبر است: ${transfer.document_type} (انتظار: transfer)`);
+        }
+        if (transfer.status !== 'confirmed') {
+          throw new Error(`وضعیت سند تایید نشده است: ${transfer.status}`);
+        }
+        if (!transfer.warehouse_id) {
+          throw new Error('انبار مبدا (warehouse_id) در سند انتقال مشخص نشده است.');
+        }
+        if (!transfer.target_warehouse_id) {
+          throw new Error('انبار مقصد (target_warehouse_id) در سند انتقال مشخص نشده است.');
+        }
+        if (transfer.warehouse_id === transfer.target_warehouse_id) {
+          throw new Error('انبار مبدا و انبار مقصد نمی‌توانند یکسان باشند.');
+        }
+
+        // 2. Check items
+        const transferItems = invItems.filter((i) => i.document_id === transfer.id);
+        if (transferItems.length === 0) {
+          throw new Error(`سند انتقال شماره ${transfer.document_number || transfer.id} فاقد قلم کالا است.`);
+        }
+
+        for (const item of transferItems) {
+          const qty = Number(item.quantity);
+          if (qty <= 0) {
+            throw new Error(`تعداد انتقال برای کالای ${item.item_id} نامعتبر است: ${qty}`);
+          }
+
+          // 3. Exactly one transfer_out transaction for source and one transfer_in for target referencing this document
+          const outTxs = allTx.filter(
+            (t) =>
+              t.reference_id === transfer.id &&
+              t.item_id === item.item_id &&
+              t.warehouse_id === transfer.warehouse_id &&
+              t.transaction_type === 'transfer_out'
+          );
+          const inTxs = allTx.filter(
+            (t) =>
+              t.reference_id === transfer.id &&
+              t.item_id === item.item_id &&
+              t.warehouse_id === transfer.target_warehouse_id &&
+              t.transaction_type === 'transfer_in'
+          );
+
+          if (outTxs.length !== 1) {
+            throw new Error(
+              `تراکنش خروج انتقال (transfer_out) برای سند ${transfer.id} در انبار مبدا ${transfer.warehouse_id} یافت نشد یا غیرمنفرد است (تعداد: ${outTxs.length})`
+            );
+          }
+          if (inTxs.length !== 1) {
+            throw new Error(
+              `تراکنش ورود انتقال (transfer_in) برای سند ${transfer.id} در انبار مقصد ${transfer.target_warehouse_id} یافت نشد یا غیرمنفرد است (تعداد: ${inTxs.length})`
+            );
+          }
+
+          if (Number(outTxs[0].quantity) !== qty) {
+            throw new Error(
+              `مقدار تراکنش خروج (${outTxs[0].quantity}) با مقدار سند انتقال (${qty}) مغایرت دارد.`
+            );
+          }
+          if (Number(inTxs[0].quantity) !== qty) {
+            throw new Error(
+              `مقدار تراکنش ورود (${inTxs[0].quantity}) با مقدار سند انتقال (${qty}) مغایرت دارد.`
+            );
+          }
+
+          // 4. Balances existence and validation
+          const sourceBal = allBalances.find(
+            (b) => b.warehouse_id === transfer.warehouse_id && b.item_id === item.item_id
+          );
+          const targetBal = allBalances.find(
+            (b) => b.warehouse_id === transfer.target_warehouse_id && b.item_id === item.item_id
+          );
+
+          if (!sourceBal) {
+            throw new Error(`رکورد موجودی برای کالای ${item.item_id} در انبار مبدا ${transfer.warehouse_id} یافت نشد.`);
+          }
+          if (!targetBal) {
+            throw new Error(`رکورد موجودی برای کالای ${item.item_id} در انبار مقصد ${transfer.target_warehouse_id} یافت نشد.`);
+          }
+          if (Number(targetBal.quantity) < qty) {
+            throw new Error(
+              `موجودی انبار مقصد (${targetBal.quantity}) کمتر از مقدار منتقل‌شده (${qty}) است.`
+            );
+          }
+
+          auditedItemsCount++;
+        }
+
+        auditedTransfers++;
+      }
+
       assertions.push({
         id: 'assert_inter_warehouse_transfer_integrity',
         category: 'Inventory',
         title: 'صحت حواله انتقال بین‌انباری و جابجایی دوطرفه کالا',
-        status: transferValid ? 'PASS' : 'WARN',
-        message: transferValid
-          ? `حواله‌های انتقال بین‌انباری با موفقیت کالا را از انبار مبدا کسر و به انبار مقصد اضافه نموده‌اند.`
-          : `هیچ سند انتقال بین‌انباری برای ارزیابی یافت نشد.`,
+        status: 'PASS',
+        message: `تعداد ${auditedTransfers} سند انتقال بین‌انباری و ${auditedItemsCount} ردیف کالا با تایید کامل جابجایی موجودی مبدا/مقصد و ثبت دقیق تراکنش‌های transfer_out و transfer_in راستی‌آزمایی شد.`,
         durationMs: Math.round(performance.now() - start7),
-        recordsTested: transfers.length,
+        recordsTested: auditedTransfers,
       });
     } catch (e: any) {
       assertions.push({
