@@ -50,14 +50,6 @@ import { CategoriesPage } from '../../features/catalog/pages/CategoriesPage';
 import { UnitsPage } from '../../features/catalog/pages/UnitsPage';
 import { PriceListsPage } from '../../features/catalog/pages/PriceListsPage';
 
-function ItemsCrashTest() {
-  return (
-    <div className="p-8">
-      <h1>Items Runtime Test</h1>
-      <p>Items route is working.</p>
-    </div>
-  );
-}
 
 // Legacy Products & Inventory
 import { ProductsPage } from '../../features/products/pages/ProductsPage';
@@ -145,7 +137,7 @@ export function AppRouter() {
         <Route path="/parties/:id/edit" element={<EditPartyPage />} />
 
         {/* Catalog & Items Management */}
-        <Route path="/items" element={<ItemsCrashTest />} />
+        <Route path="/items" element={<ItemsListPage />} />
         <Route path="/items/products" element={<ProductsListPage />} />
         <Route path="/items/services" element={<ServicesListPage />} />
         <Route path="/items/new" element={<CreateItemPage />} />
