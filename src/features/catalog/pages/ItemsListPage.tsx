@@ -207,11 +207,12 @@ export function ItemsListPage({
                 setItemType(e.target.value as any);
                 setPage(1);
               }}
-            >
-              <option value="all">همه انواع (کالا + خدمت)</option>
-              <option value="product">کالای فیزیکی</option>
-              <option value="service">خدمت / سرویس</option>
-            </Select>
+              options={[
+                { value: 'all', label: 'همه انواع (کالا + خدمت)' },
+                { value: 'product', label: 'کالای فیزیکی' },
+                { value: 'service', label: 'خدمت / سرویس' },
+              ]}
+            />
           )}
 
           <Select
@@ -220,14 +221,16 @@ export function ItemsListPage({
               setCategoryId(e.target.value);
               setPage(1);
             }}
-          >
-            <option value="all">همه دسته‌بندی‌ها</option>
-            {(categories || []).map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.parent_name ? `${cat.parent_name} > ${cat.name}` : cat.name}
-              </option>
-            ))}
-          </Select>
+            options={[
+              { value: 'all', label: 'همه دسته‌بندی‌ها' },
+              ...categories.map((cat) => ({
+                value: cat.id,
+                label: cat.parent_name
+                  ? `${cat.parent_name} > ${cat.name}`
+                  : cat.name
+              }))
+            ]}
+          />
 
           <Select
             value={status}
@@ -235,11 +238,12 @@ export function ItemsListPage({
               setStatus(e.target.value as any);
               setPage(1);
             }}
-          >
-            <option value="all">همه وضعیت‌ها</option>
-            <option value="active">فعال</option>
-            <option value="inactive">غیرفعال</option>
-          </Select>
+            options={[
+              { value: 'all', label: 'همه وضعیت‌ها' },
+              { value: 'active', label: 'فعال' },
+              { value: 'inactive', label: 'غیرفعال' },
+            ]}
+          />
         </div>
       </Card>
 
