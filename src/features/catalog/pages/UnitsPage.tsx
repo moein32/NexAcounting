@@ -258,13 +258,11 @@ export function UnitsPage() {
             <Select
               value={unitType}
               onChange={(e) => setUnitType(e.target.value as UnitType)}
-            >
-              {Object.entries(UNIT_TYPE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </Select>
+              options={Object.entries(UNIT_TYPE_LABELS).map(([key, label]) => ({
+                value: key,
+                label: label,
+              }))}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">

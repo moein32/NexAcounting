@@ -200,16 +200,19 @@ export function CategoriesPage() {
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               دسته‌بندی مادر (والد)
             </label>
-            <Select value={parentId} onChange={(e) => setParentId(e.target.value)}>
-              <option value="">-- بدون والد (دسته‌بندی اصلی) --</option>
-              {(categories || [])
-                .filter((c) => !editingCategory || c.id !== editingCategory.id)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </Select>
+            <Select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              options={[
+                { value: '', label: '-- بدون والد (دسته‌بندی اصلی) --' },
+                ...(categories || [])
+                  .filter((c) => !editingCategory || c.id !== editingCategory.id)
+                  .map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  })),
+              ]}
+            />
           </div>
 
           <div>

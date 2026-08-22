@@ -398,28 +398,31 @@ export function CreateItemPage() {
                 <Select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                >
-                  <option value="">-- بدون دسته‌بندی --</option>
-                  {(categories || []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.parent_name ? `${c.parent_name} > ${c.name}` : c.name}
-                    </option>
-                  ))}
-                </Select>
+                  options={[
+                    { value: '', label: '-- بدون دسته‌بندی --' },
+                    ...(categories || []).map((c) => ({
+                      value: c.id,
+                      label: c.parent_name ? `${c.parent_name} > ${c.name}` : c.name,
+                    })),
+                  ]}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   واحد اندازه‌گیری
                 </label>
-                <Select value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-                  <option value="">-- انتخاب واحد --</option>
-                  {(units || []).map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} {u.symbol ? `(${u.symbol})` : ''}
-                    </option>
-                  ))}
-                </Select>
+                <Select
+                  value={unitId}
+                  onChange={(e) => setUnitId(e.target.value)}
+                  options={[
+                    { value: '', label: '-- انتخاب واحد --' },
+                    ...(units || []).map((u) => ({
+                      value: u.id,
+                      label: `${u.name}${u.symbol ? ` (${u.symbol})` : ''}`,
+                    })),
+                  ]}
+                />
               </div>
 
               <div>
