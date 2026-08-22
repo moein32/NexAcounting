@@ -40,6 +40,7 @@ import { EditPartyPage } from '../../features/parties/pages/EditPartyPage';
 import { PartyDetailPage } from '../../features/parties/pages/PartyDetailPage';
 
 // Catalog & Items Management
+import { ItemsListPage } from '../../features/catalog/pages/ItemsListPage';
 import { ProductsListPage } from '../../features/catalog/pages/ProductsListPage';
 import { ServicesListPage } from '../../features/catalog/pages/ServicesListPage';
 import { CreateItemPage } from '../../features/catalog/pages/CreateItemPage';
